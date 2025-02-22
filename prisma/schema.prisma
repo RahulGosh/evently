@@ -1,0 +1,97 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  name          String?
+  image         String?
+  password      String?
+  role          UserRole  @default(USER)
+  isAdmin       Boolean   @default(false)
+  accounts      Account[]
+  events        Event[] // Relationship with Event model (Organizer)
+  orders        Order[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Category {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  events Event[] // Relationship with Event model
+
+  @@map("categories")
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  location      String?
+  createdAt     DateTime @default(now())
+  imageUrl      String
+  startDateTime DateTime
+  endDateTime   DateTime
+  price         String
+  isFree        Boolean  @default(false)
+  url           String?
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  organizerId String
+  organizer   User   @relation(fields: [organizerId], references: [id])
+
+  orders Order[]
+
+  @@map("events")
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  stripeId    String   @unique
+  totalAmount String
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  buyerId String
+  buyer   User   @relation(fields: [buyerId], references: [id])
+
+  @@map("orders") // Maps to "orders" table in PostgreSQL
+}
