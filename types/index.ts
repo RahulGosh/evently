@@ -144,12 +144,12 @@ export type RemoveUrlQueryParams = {
 };
 
 export type SearchParamProps = {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: { [key: string]: string | string[] | undefined };
 };
 
 export type EventDetailSearchParamProps = {
   params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Record<string, string | string[] | undefined>;
 };
 
 import * as z from "zod";
