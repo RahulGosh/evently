@@ -144,6 +144,10 @@ export type RemoveUrlQueryParams = {
 };
 
 export type SearchParamProps = {
+  searchParams: { [key: string]: string | string[] | undefined };
+};
+
+export type EventDetailSearchParamProps = {
   params: { id: string };
   searchParams: { [key: string]: string | string[] | undefined };
 };

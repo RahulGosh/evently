@@ -3,10 +3,10 @@ import CheckoutButton from '@/components/shared/checkoutButton';
 import Collection from '@/components/shared/collection';
 import { getEventById, getRelatedEventsByCategory } from '@/lib/actions/event.action';
 import { formatDateTime } from '@/lib/utils';
-import { SearchParamProps } from '@/types'
+import { EventDetailSearchParamProps } from '@/types'
 import Image from 'next/image';
 
-const EventDetails = async ({ params: { id }, searchParams }: SearchParamProps) => {
+const EventDetails = async ({ params: { id }, searchParams }: EventDetailSearchParamProps) => {
   const event = await getEventById(id);
 
   const relatedEvents = await getRelatedEventsByCategory({
