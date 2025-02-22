@@ -10,10 +10,9 @@ import CategoryFilter from '@/components/shared/categoryFilter';
 
 export default async function Home({ searchParams }: SearchParamProps) {
   // Use Promise.resolve to properly handle searchParams
-  const params = await Promise.resolve(searchParams);
   const page = Number(searchParams?.page) || 1;
-  const searchText = (params?.query as string) || "";
-  const category = (params?.category as string) || "";
+  const searchText = (searchParams?.query as string) || "";
+  const category = (searchParams?.category as string) || "";
 
   const eventsData = await getAllEvents({
     query: searchText,
