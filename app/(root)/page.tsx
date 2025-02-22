@@ -1,8 +1,9 @@
 import { HomeContent } from "@/components/shared/homeContent";
-import { SearchParamProps } from "@/types";
 import { Suspense } from "react";
 
-export default function Home({ searchParams }: SearchParamProps) {
+  export default async function Page(props: { searchParams: Promise<{ page?: string; query?: string; category?: string }> }) {
+  const searchParams = await props.searchParams;
+
   const page = Number(searchParams?.page) || 1;
   const searchText = searchParams?.query ? String(searchParams.query) : "";
   const category = searchParams?.category ? String(searchParams.category) : "";
