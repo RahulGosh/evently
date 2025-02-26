@@ -11,27 +11,31 @@ export default {
     Github({
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
-      allowDangerousEmailAccountLinking: true, // Enables linking multiple providers
+      allowDangerousEmailAccountLinking: true, // ✅ Allows linking multiple providers to the same user
     }),
-    Google({
+  Google({
       clientId: process.env.GOOGLE_ID,
       clientSecret: process.env.GOOGLE_SECRET,
-      allowDangerousEmailAccountLinking: true, // Enables linking multiple providers
-    }), 
+      allowDangerousEmailAccountLinking: true, // ✅ Allows linking multiple providers to the same user
+    }),
     Credentials({
       async authorize(credentials) {
-        const validateFields = LoginSchema.safeParse(credentials);
+        const validatedFields = LoginSchema.safeParse(credentials);
 
-        if (validateFields.success) {
-          const { email, password } = validateFields.data;
+        if (validatedFields.success) {
+            const { email, password } = validatedFields.data;
 
-          const user = await getUserByEmail(email);
-          if (!user || !user.password) return null;
+            const user = await getUserByEmail(email);
+            if (!user || !user.password) return null;
 
-          const passwordMatch = await bcrypt.compare(password, user.password);
+            const passwordMatches = await bcrypt.compare(
+                password,
+                user.password
+            );
 
-          if (passwordMatch) return user;
+            if (passwordMatches) return user;
         }
+
         return null;
       },
     }),

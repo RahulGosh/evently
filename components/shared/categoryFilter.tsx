@@ -33,26 +33,18 @@ const CategoryFilter = () => {
   }, []);
 
   const onSelectCategory = (category: string) => {
-    let newUrl = '';
+    let currentParams = new URLSearchParams(searchParams.toString());
   
-    if (category && category !== 'All') {
-      newUrl = formUrlQuery({
-        params: searchParams.toString(),
-        key: 'category',
-        value: category
-      });
+    if (category && category !== "All") {
+      currentParams.set("category", category);
+      currentParams.delete("page"); // Ensure we reset to page 1 when selecting a category
     } else {
-      // Remove 'category' from query
-      newUrl = removeKeysFromQuery({
-        params: searchParams.toString(),
-        keysToRemove: ['category']
-      });
-  
-      // If no query params are left, reset to base URL
-      if (!newUrl || newUrl === '?') {
-        newUrl = window.location.pathname;
-      }
+      currentParams.delete("category");
+      currentParams.delete("page"); // Also remove page when resetting category
     }
+  
+    // Construct the new URL without adding unwanted encoded characters
+    const newUrl = `${window.location.pathname}?${currentParams.toString()}`;
   
     router.push(newUrl, { scroll: false });
   };

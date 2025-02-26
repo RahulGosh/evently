@@ -1,12 +1,27 @@
 "use client"
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import EventForm from '@/components/shared/eventForm';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 const CreateEvent = () => {
   const { data: session } = useSession(); // Get session data
   const userId = session?.user.id;
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!session?.user) {
+      router.push("/login");
+      return;
+    }
+
+    if (!session?.user?.isAdmin) {
+      router.push("/");
+      return;
+    }
+  }, [])
+  
 
   return (
     <>

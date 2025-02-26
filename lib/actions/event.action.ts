@@ -59,6 +59,7 @@ export const createEvent = async (event: any, userId: string, imageUrl: string) 
         url: event.url || null,
         categoryId: event.categoryId,
         organizerId: userId,
+        ticketsLeft: event.ticketsLeft,
       },
     });
 
@@ -123,7 +124,7 @@ export const getAllEvents = async ({
   } finally {
     await db.$disconnect();
   }
-};
+}; 
 
 export const getEventsByUser = async (userId: string, { page = 1, limit = 6 } = {}) => {
   try {

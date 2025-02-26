@@ -4,6 +4,8 @@ import { use, useState, useEffect } from "react";
 import EventForm from "@/components/shared/eventForm";
 import { getEventById } from "@/lib/actions/event.action";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation"; // Import router for redirection
+import LoadingLogo from "@/components/shared/loadingLogo";
 
 type UpdateEventProps = {
   params: Promise<{ id: string }>; // Marking params as a Promise
@@ -14,8 +16,14 @@ const UpdateEvent = ({ params }: UpdateEventProps) => {
   const { data: session } = useSession();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
+    if (!session?.user) {
+      router.push("/login");
+      return;
+    }
+    
     const fetchEvent = async () => {
       try {
         const eventData = await getEventById(resolvedParams.id);
@@ -32,7 +40,7 @@ const UpdateEvent = ({ params }: UpdateEventProps) => {
     }
   }, [resolvedParams.id]);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <LoadingLogo />;
 
   return (
     <>

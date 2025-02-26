@@ -35,8 +35,8 @@ const MobileNav = () => {
           />
           <Separator className="border border-gray-50" />
           {/* Pass isAuthenticated as a prop */}
-          <NavItems isAuthenticated={isAuthenticated} />
-        </SheetContent>
+          <NavItems isAuthenticated={!!session} isAdmin={session?.user?.role === "ADMIN"} />
+          </SheetContent>
       </Sheet>
     </nav>
   );

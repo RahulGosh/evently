@@ -9,8 +9,14 @@ export const authRoutes = [
 ];
 
 export const protectedRoutes = [
-    "/protected/events/create" // Only allow logged-in users to access this route
+    "/protected/events/create",
 ];
+
+// Routes accessible only by Admin users
+// export const adminRoutes = [
+//     "/protected/events/create",
+//     "/protected/profile",
+// ];
 
 export const apiAuthPrefix = "/api";
 export const DEFAULT_LOGIN_REDIRECT = "/"; // Redirect users after login

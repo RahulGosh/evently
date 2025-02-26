@@ -107,9 +107,10 @@ export type CreateCategoryParams = {
 export type CheckoutOrderParams = {
   eventTitle: string;
   eventId: string;
-  price: string;
+  price: number;
   isFree: boolean;
   buyerId: string;
+  quantity: number; // Add this line
 };
 
 export type CreateOrderParams = {
@@ -118,12 +119,20 @@ export type CreateOrderParams = {
   buyerId: string;
   totalAmount: string;
   createdAt: Date;
+  quantity: number;
 };
 
 export type GetOrdersByEventParams = {
   eventId: string;
-  searchString: string;
+  searchString?: string;
+  sort?: 'asc' | 'desc';
 };
+
+export type GetAllUsersParams = {
+  searchString?: string;
+  role?: "ADMIN" | "USER";
+}
+
 
 export type GetOrdersByUserParams = {
   userId: string | null;

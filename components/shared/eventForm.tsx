@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -51,8 +51,9 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
         price: event.price,
         isFree: event.isFree,
         url: event.url || "",
+        ticketsLeft: event.ticketsLeft ?? 10, // Ensure ticketsLeft has a default value
       }
-    : eventDefaultValues;
+    : { ...eventDefaultValues, ticketsLeft: 10 };
 
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
@@ -115,7 +116,11 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
         console.log("Event created:", newEvent);
       } else {
         if (!eventId) throw new Error("Event ID is required for updates");
-        const updatedEvent = await updateEvent(eventId, { ...values, imageUrl }, userId);
+        const updatedEvent = await updateEvent(
+          eventId,
+          { ...values, imageUrl },
+          userId
+        );
         console.log("Event updated:", updatedEvent);
       }
 
@@ -233,7 +238,7 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
             control={form.control}
             name="location"
             render={({ field }) => (
-              <FormItem className="w-full">
+              <FormItem className="w-full md:w-1/2">
                 <FormLabel>Location</FormLabel>
                 <FormControl>
                   <div className="flex-center h-[54px] w-full overflow-hidden rounded-full bg-grey-50 px-4 py-2">
@@ -249,6 +254,29 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
                       className="input-field"
                     />
                   </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="ticketsLeft"
+            render={({ field }) => (
+              <FormItem className="w-full md:w-1/2">
+                <FormLabel>Tickets Left</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="Number of tickets available"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(Number(e.target.value) || 0)
+                    } // Ensure a number is stored
+                    className="input-field"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

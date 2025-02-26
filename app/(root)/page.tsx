@@ -1,4 +1,5 @@
 import { HomeContent } from "@/components/shared/homeContent";
+import LoadingLogo from "@/components/shared/loadingLogo";
 import { Suspense } from "react";
 
   export default async function Page(props: { searchParams: Promise<{ page?: string; query?: string; category?: string }> }) {
@@ -9,7 +10,7 @@ import { Suspense } from "react";
   const category = searchParams?.category ? String(searchParams.category) : "";
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<LoadingLogo />}>
       <HomeContent page={page} searchText={searchText} category={category} />
     </Suspense>
   );

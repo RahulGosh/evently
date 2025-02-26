@@ -5,15 +5,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 
-const NavItems = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+interface NavItemsProps {
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+}
+
+const NavItems = ({ isAuthenticated, isAdmin }: NavItemsProps) => {
   const pathname = usePathname();
 
-  // Filter links: Show protected links only if the user is authenticated
+  // Filter links based on authentication and admin status
   const filteredLinks = headerLinks.filter((link) => {
-    if (!isAuthenticated && link.route.startsWith("/protected")) {
-      return false; // Hide protected pages for unauthenticated users
+    if (!isAuthenticated) {
+      return link.route === "/";
     }
-    return true;
+    if (isAuthenticated && isAdmin) {
+      return true;
+    }
+    return false;
   });
 
   return (
@@ -25,7 +33,7 @@ const NavItems = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
           <li
             key={link.route}
             className={`${
-              isActive && "text-primary-500"
+              isActive ? "text-primary-500" : ""
             } flex-center p-medium-16 whitespace-nowrap`}
           >
             <Link href={link.route}>{link.label}</Link>

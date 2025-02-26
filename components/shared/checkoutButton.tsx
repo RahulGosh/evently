@@ -1,33 +1,43 @@
-"use client"
+"use client";
 
-import Link from 'next/link'
-import React from 'react'
-import { Button } from '../ui/button'
-import { useSession } from 'next-auth/react'
-import { Event } from '@prisma/client'
+import React from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "../ui/button";
+import { useSession } from "next-auth/react";
+import Checkout from "./checkout";
+import { Event } from "@prisma/client";
 
-const CheckoutButton = ({ event }: { event: Event }) => {
-  const {data: session} = useSession()
+// Exclude relations like 'orders' from Event
+type EventProps = Omit<Event, "orders">;
+
+const CheckoutButton = ({ event }: { event: EventProps }) => {
+  const { data: session } = useSession();
+  const router = useRouter();
   const userId = session?.user?.id;
+
   const hasEventFinished = new Date(event.endDateTime) < new Date();
+
+  if (hasEventFinished) {
+    return (
+      <p className="p-2 text-red-400">Sorry, tickets are no longer available.</p>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3">
-      {hasEventFinished ? (
-        <p className="p-2 text-red-400">Sorry, tickets are no longer available.</p>
-      ): (
-        <>
-            <Button asChild className="button rounded-full" size="lg">
-              <Link href="/sign-in">
-                Get Tickets
-              </Link>
-            </Button>
-
-            {/* <Checkout event={event} userId={userId} /> */}
-        </>
+      {userId ? (
+        <Checkout event={event} userId={userId} />
+      ) : (
+        <Button 
+          onClick={() => router.push("/login")} 
+          className="button sm:w-fit" 
+          size="lg"
+        >
+          {event.isFree ? 'Get Ticket' : 'Buy Ticket'}
+        </Button>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default CheckoutButton
+export default CheckoutButton;

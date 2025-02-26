@@ -69,6 +69,7 @@ model Event {
   price         String
   isFree        Boolean  @default(false)
   url           String?
+  ticketsLeft   Int      @default(10)
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
@@ -86,6 +87,7 @@ model Order {
   createdAt   DateTime @default(now())
   stripeId    String   @unique
   totalAmount String
+  quantity    Int      // ✅ Add this line
 
   eventId String
   event   Event  @relation(fields: [eventId], references: [id])

@@ -10,5 +10,6 @@ export const eventFormSchema = z.object({
   categoryId: z.string(),
   price: z.string(),
   isFree: z.boolean(),
-  url: z.string().url()
+  url: z.string().url(),
+  ticketsLeft: z.number().min(1, "Tickets left must be at least 1").default(10),
 })
