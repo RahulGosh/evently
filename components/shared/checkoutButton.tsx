@@ -23,23 +23,17 @@ const CheckoutButton = ({ event }: { event: EventProps }) => {
     );
   }
 
-  const handleCheckout = () => {
-    if (!userId) {
-      router.push("/login");
-    }
-  };
-
   return (
     <div className="flex items-center gap-3">
       {userId ? (
         <Checkout event={event} userId={userId} />
       ) : (
         <Button 
-        onClick={() => router.push("/login")} 
-        className="button sm:w-fit" 
+          onClick={() => router.push("/login")} 
+          className="button sm:w-fit" 
           size="lg"
         >
-          {event.isFree ? "Get Ticket" : "Buy Now"}
+          {event.isFree ? 'Get Ticket' : 'Buy Ticket'}
         </Button>
       )}
     </div>

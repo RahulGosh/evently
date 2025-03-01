@@ -8,7 +8,6 @@ import {
   GetOrdersByUserParams,
 } from "@/types";
 import { db } from "../db";
-import { NextResponse } from "next/server";
 
 export const checkoutOrder = async (order: CheckoutOrderParams) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -42,11 +41,6 @@ export const checkoutOrder = async (order: CheckoutOrderParams) => {
     success_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/protected/profile`,
     cancel_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/`,
   });
-
-  if (!session.metadata?.eventId || !session.metadata?.buyerId) {
-    console.error("Missing metadata:", session.metadata);
-    return NextResponse.json({ message: "Missing metadata" }, { status: 400 });
-  }
   console.log("Stripe Checkout URL:", session.url);
 
   return { url: session.url };
@@ -90,11 +84,8 @@ export const createOrder = async (order: CreateOrderParams) => {
         },
       });
     });
-    console.log("Order created successfully:", newOrder);
-
     return newOrder;
   } catch (error) {
-    console.error("Database transaction error:", error);
     throw error;
   }
 };
