@@ -18,10 +18,6 @@ const Header = () => {
   const handleLogout = async () => {
     setLoading(true);
     await signOut();
-
-    setTimeout(() => {
-      router.push("/login");
-    }, 300);
   };
 
   // useEffect(() => {

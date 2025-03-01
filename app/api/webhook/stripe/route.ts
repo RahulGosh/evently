@@ -35,6 +35,11 @@ export async function POST(request: Request) {
       createdAt: new Date(),
     }
 
+    if (!session.metadata?.eventId || !session.metadata?.buyerId) {
+      console.error("Missing metadata:", session.metadata);
+      return NextResponse.json({ message: "Missing metadata" }, { status: 400 });
+    }
+
     try {
       const newOrder = await createOrder(order)
       return NextResponse.json({ message: 'OK', order: newOrder })
