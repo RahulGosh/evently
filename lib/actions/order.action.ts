@@ -41,6 +41,7 @@ export const checkoutOrder = async (order: CheckoutOrderParams) => {
     success_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/protected/profile`,
     cancel_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/`,
   });
+  console.log("Stripe Checkout URL:", session.url);
 
   return { url: session.url };
 } catch (error) {

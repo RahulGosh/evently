@@ -5,7 +5,7 @@ export const headerLinks = [
     },
     {
       label: 'Create Event',
-      route: '/protected/events/create',
+      route: '/protected/admin/events/create',
     },
     {
       label: 'My Profile',

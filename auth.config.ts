@@ -1,41 +1,38 @@
 import bcrypt from "bcryptjs";
 import Credentials from "next-auth/providers/credentials";
 import type { NextAuthConfig } from "next-auth";
-import { LoginSchema } from "./types/index";
-import { getUserByEmail } from "./lib/actions/user.action";
 import Github from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
+import { LoginSchema } from "./types";
+import { getUserByEmail } from "./data/user";
 
 export default {
   providers: [
     Github({
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
-      allowDangerousEmailAccountLinking: true, // ✅ Allows linking multiple providers to the same user
+      // allowDangerousEmailAccountLinking: true,
     }),
-  Google({
+    Google({
       clientId: process.env.GOOGLE_ID,
       clientSecret: process.env.GOOGLE_SECRET,
-      allowDangerousEmailAccountLinking: true, // ✅ Allows linking multiple providers to the same user
+      // allowDangerousEmailAccountLinking: true,
     }),
+    Google, 
     Credentials({
       async authorize(credentials) {
-        const validatedFields = LoginSchema.safeParse(credentials);
+        const validateFields = LoginSchema.safeParse(credentials);
 
-        if (validatedFields.success) {
-            const { email, password } = validatedFields.data;
+        if (validateFields.success) {
+          const { email, password } = validateFields.data;
 
-            const user = await getUserByEmail(email);
-            if (!user || !user.password) return null;
+          const user = await getUserByEmail(email);
+          if (!user || !user.password) return null;
 
-            const passwordMatches = await bcrypt.compare(
-                password,
-                user.password
-            );
+          const passwordMatch = await bcrypt.compare(password, user.password);
 
-            if (passwordMatches) return user;
+          if (passwordMatch) return user;
         }
-
         return null;
       },
     }),

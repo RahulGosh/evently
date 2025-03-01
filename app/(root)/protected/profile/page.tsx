@@ -37,7 +37,6 @@ const ProfileContent = () => {
         console.error("Error fetching orders:", error);
       } finally {
         setLoadingOrders(false);
-
       }
     };
 
@@ -52,7 +51,6 @@ const ProfileContent = () => {
         console.error("Error fetching events:", error);
       } finally {
         setLoadingEvents(false);
-
       }
     };
 
@@ -62,8 +60,8 @@ const ProfileContent = () => {
 
   return (
     <>
-     {/* My Tickets Section */}
-     <section className="bg-primary-50 bg-dotted-pattern bg-cover bg-center py-5 md:py-10">
+      {/* My Tickets Section */}
+      <section className="bg-primary-50 bg-dotted-pattern bg-cover bg-center py-5 md:py-10">
         <div className="wrapper flex items-center justify-center sm:justify-between">
           <h3 className="h3-bold text-center sm:text-left">My Tickets</h3>
           <Button asChild size="lg" className="button hidden sm:flex">
@@ -98,7 +96,7 @@ const ProfileContent = () => {
                 Events Organized
               </h3>
               <Button asChild size="lg" className="button hidden sm:flex">
-                <Link href="/protected/events/create">Create New Event</Link>
+                <Link href="/protected/admin/events/create">Create New Event</Link>
               </Button>
             </div>
           </section>

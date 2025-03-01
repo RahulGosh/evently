@@ -5,6 +5,7 @@ import Image from "next/image";
 import Search from "./search";
 import CategoryFilter from "./categoryFilter";
 import Collection from "./collection";
+import { ClearFiltersButton } from "./clearFilterButton";
 
 type HomeContentProps = {
   page: number;
@@ -17,7 +18,7 @@ export async function HomeContent({ page, searchText, category }: HomeContentPro
     query: searchText,
     category,
     limit: 6,
-    page
+    page,
   });
 
   return (
@@ -52,13 +53,14 @@ export async function HomeContent({ page, searchText, category }: HomeContentPro
         className="wrapper my-8 flex flex-col gap-8 md:gap-12"
       >
         <h2 className="h2-bold">
-          Trust by <br /> Thousands of Events
+          Trusted by <br /> Thousands of Events
         </h2>
 
-        <div className="flex w-full flex-col gap-5 md:flex-row">
+        <form action="/" method="GET" className="flex w-full flex-col gap-5 md:flex-row items-center">
           <Search />
           <CategoryFilter />
-        </div>
+          <ClearFiltersButton />
+        </form>
 
         <Collection
           data={eventsData.data}

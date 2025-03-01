@@ -26,15 +26,15 @@ const OrdersContent = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.user) {
-      router.push("/login");
-      return;
-    }
+    // if (!session?.user) {
+    //   router.push("/login");
+    //   return;
+    // }
 
-    if (!session?.user?.isAdmin) {
-      router.push("/");
-      return;
-    }
+    // if (!session?.user?.isAdmin) {
+    //   router.push("/");
+    //   return;
+    // }
 
     const fetchOrders = async () => {
       setLoading(true);

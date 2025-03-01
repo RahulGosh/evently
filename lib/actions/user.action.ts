@@ -10,6 +10,8 @@ import { AuthError } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { RegisterSchema } from './../../types/index';
+import { getUserByEmail } from "@/data/user";
+
 export const login = async (values: z.infer<typeof LoginSchema>) => {
   const validatedFields = LoginSchema.safeParse(values);
 
@@ -71,27 +73,6 @@ export const register = async (values: z.infer<typeof RegisterSchema>) => {
   });
 
   return { success: "User created!" };
-};
-
-
-export const getUserByEmail = async (email: string) => {
-  try {
-    const user = await db.user.findUnique({ where: { email } });
-
-    return user;
-  } catch (error) {
-    return null;
-  }
-};
-
-export const getUserById = async (id: string) => {
-  try {
-    const user = await db.user.findUnique({ where: { id } });
-      console.log(id, "id")
-    return user;
-  } catch (error) {
-    return null;
-  }
 };
 
 export const getAllUsers = async ({ searchString, role }: GetAllUsersParams) => {

@@ -65,7 +65,23 @@ export default async function EventDetails(props: {
               </div>
             </div>
 
-            <CheckoutButton event={event} />
+            {event.ticketsLeft > 0 && <CheckoutButton event={event} />}
+
+            <div className="flex items-center gap-2">
+              <Image
+                src="/assets/icons/ticket.png"
+                alt="Tickets Left"
+                width={28}
+                height={28}
+              />
+              <p className="p-medium-16 lg:p-regular-20 text-red-600">
+                {event.ticketsLeft > 0 ? (
+                  <>{event.ticketsLeft} tickets left</>
+                ) : (
+                  <span className="text-red-500 font-semibold">Sold Out</span>
+                )}
+              </p>
+            </div>
 
             <div className="flex flex-col gap-5">
               <div className="flex gap-2 md:gap-3">
