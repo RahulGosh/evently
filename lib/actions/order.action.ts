@@ -42,7 +42,10 @@ export const checkoutOrder = async (order: CheckoutOrderParams) => {
     cancel_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/`,
   });
   console.log("Stripe Checkout URL:", session.url);
-
+  console.log(order.eventId, "order.eventId")
+  console.log(order.buyerId, "order.buyerId")
+  console.log(order.quantity, "order.quantity")
+  console.log(session, "session")
   return { url: session.url };
 } catch (error) {
   throw error;
@@ -55,7 +58,7 @@ export const createOrder = async (order: CreateOrderParams) => {
       where: { id: order.eventId },
       select: { ticketsLeft: true },
     });
-
+    console.log(event, "event")
     if (!event) {
       throw new Error("Event not found.");
     }
@@ -69,7 +72,7 @@ export const createOrder = async (order: CreateOrderParams) => {
         where: { id: order.eventId },
         data: { ticketsLeft: { decrement: order.quantity } }, // Use quantity
       });
-    
+      console.log(newOrder, "newOrder")
       if (updatedEvent.ticketsLeft < 0) {
         throw new Error("Not enough tickets available.");
       }
