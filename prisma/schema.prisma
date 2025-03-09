@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  name          String?
+  image         String?
+  password      String?
+  role          UserRole  @default(USER)
+  isAdmin       Boolean   @default(false)
+  accounts      Account[]
+  events        Event[]
+  orders        Order[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Category {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  events Event[]
+
+  @@map("categories")
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  location      String?
+  createdAt     DateTime @default(now())
+  imageUrl      String
+  startDateTime DateTime
+  endDateTime   DateTime
+  price         String
+  isFree        Boolean  @default(false)
+  url           String?
+  ticketsLeft   Int      @default(10)
+  categoryId    String
+  organizerId   String
+  category      Category @relation(fields: [categoryId], references: [id])
+  organizer     User     @relation(fields: [organizerId], references: [id])
+  orders        Order[]
+
+  @@map("events")
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  stripeId    String   @unique
+  totalAmount String
+  eventId     String
+  buyerId     String
+  quantity    Int
+  buyer       User     @relation(fields: [buyerId], references: [id])
+  event       Event    @relation(fields: [eventId], references: [id])
+
+  @@map("orders")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
