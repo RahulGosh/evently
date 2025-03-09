@@ -13,11 +13,12 @@ import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import { Loader2 } from "lucide-react";
+import Link from "next/link";
 
 const MobileNav = () => {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
-  
+
   const handleLogout = async () => {
     setLoading(true);
     await signOut();
@@ -37,7 +38,8 @@ const MobileNav = () => {
         </SheetTrigger>
         <SheetContent className="flex flex-col gap-6 bg-white md:hidden">
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-          
+
+          {/* Logo */}
           <Image 
             src="/assets/images/logo.svg"
             alt="logo"
@@ -45,16 +47,18 @@ const MobileNav = () => {
             height={38}
           />
           <Separator className="border border-gray-50" />
-          
+
+          {/* Navigation Items */}
           <NavItems 
             isAuthenticated={!!session} 
             isAdmin={session?.user?.role === "ADMIN"} 
           />
-          
-          {/* Add logout button to mobile nav */}
-          {session && (
-            <div className="mt-auto">
-              <Separator className="border border-gray-50 mb-4" />
+
+          <div className="mt-auto">
+            <Separator className="border border-gray-50 mb-4" />
+
+            {session ? (
+              /* Logout Button */
               <Button
                 className="w-full rounded-full flex items-center justify-center gap-2"
                 size="lg"
@@ -67,8 +71,18 @@ const MobileNav = () => {
                   "Logout"
                 )}
               </Button>
-            </div>
-          )}
+            ) : (
+              /* Login & Register Buttons */
+              <div className="flex flex-col gap-3">
+                <Button asChild className="w-full rounded-full" size="lg">
+                  <Link href="/login">Login</Link>
+                </Button>
+                <Button asChild className="w-full rounded-full" size="lg">
+                  <Link href="/register">Register</Link>
+                </Button>
+              </div>
+            )}
+          </div>
         </SheetContent>
       </Sheet>
     </nav>
