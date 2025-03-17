@@ -37,16 +37,6 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
   const [scannedTickets, setScannedTickets] = useState<TicketScan[]>([]);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState<string>("prompt");
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && !qrScannerRef.current) {
-      qrScannerRef.current = new Html5Qrcode("qr-scanner-container");
-    }
-  }, []);
-
-  
-
-
-
   // Check camera permission status on mount
   useEffect(() => {
     const checkCameraPermissions = async () => {
@@ -66,31 +56,24 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
       }
     };
     
-    if (typeof window !== "undefined") {
-      checkCameraPermissions();
-    }
-    }, []);
+    checkCameraPermissions();
+  }, []);
 
   // Resolve params
   useEffect(() => {
-    if (!params) return;
-  
     const resolveParams = async () => {
       try {
         const resolved = await params;
-        if (resolved?.id) {
-          setEventId(resolved.id);
-        } else {
-          throw new Error("Invalid event parameters");
-        }
+        setEventId(resolved.id);
       } catch (error) {
+        // Don't log this error to console
         setScanResult({
           success: false,
           message: "Error resolving event parameters"
         });
       }
     };
-  
+    
     resolveParams();
   }, [params]);
 
@@ -140,125 +123,61 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
   const processScanResult = async (ticketId: string) => {
     setIsScanning(true);
     setScanResult(null);
-    
+  
     try {
       if (!session?.user.id) {
         setScanResult({
           success: false,
           message: "User not authenticated",
-          ticketId
+          ticketId,
         });
-        setScanHistory(prev => [
-          {
-            ticketId,
-            timestamp: new Date(),
-            success: false,
-            message: "User not authenticated"
-          },
-          ...prev
-        ]);
         setIsScanning(false);
         return;
       }
-
-      // Send the scan request to the server
-      try {
-        await scanTicket(ticketId, session.user.id, eventId);
-        
-        // Show success message
+  
+      // Use fetch to call the API route
+      const response = await fetch("/api/scanTicket", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ticketId,
+          scannerId: session.user.id,
+          eventId,
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
         setScanResult({
           success: true,
           message: "Ticket validated successfully!",
-          ticketId
+          ticketId,
         });
-        
-        // Add to scan history
-        setScanHistory(prev => [
-          {
-            ticketId,
-            timestamp: new Date(),
-            success: true,
-            message: "Valid ticket"
-          },
-          ...prev
-        ]);
-        
+  
         // Refresh the scanned tickets list
-        try {
-          const tickets = await getScannedTickets(eventId);
-          setScannedTickets(tickets);
-        } catch (error) {
-          // Silent handling to avoid console errors
-        }
-      } catch (error) {
-        // Extract message from error without console logging
-        let errorMessage = "Unknown error occurred";
-        
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'object' && error !== null && 'message' in error) {
-          errorMessage = String((error as any).message);
-        }
-        
-        // Check for specific error messages we want to handle
-        if (errorMessage.includes("Ticket already scanned")) {
-          // This is an expected error, handle it gracefully
-          setScanResult({
-            success: false,
-            message: errorMessage,
-            ticketId
-          });
-          
-          setScanHistory(prev => [
-            {
-              ticketId,
-              timestamp: new Date(),
-              success: false,
-              message: errorMessage
-            },
-            ...prev
-          ]);
-        } else {
-          // Other errors
-          setScanResult({
-            success: false,
-            message: errorMessage,
-            ticketId
-          });
-          
-          setScanHistory(prev => [
-            {
-              ticketId,
-              timestamp: new Date(),
-              success: false,
-              message: errorMessage
-            },
-            ...prev
-          ]);
-        }
+        const tickets = await getScannedTickets(eventId);
+        setScannedTickets(tickets);
+      } else {
+        setScanResult({
+          success: false,
+          message: data.message || "Error validating ticket",
+          ticketId,
+        });
       }
     } catch (error) {
-      // This is our outer catch for any unexpected errors in our own code
       setScanResult({
         success: false,
         message: "Error processing scan",
-        ticketId
+        ticketId,
       });
-      
-      setScanHistory(prev => [
-        {
-          ticketId,
-          timestamp: new Date(),
-          success: false,
-          message: "Error processing scan"
-        },
-        ...prev
-      ]);
     } finally {
       setIsScanning(false);
     }
   };
-
+  
   // Handle file upload for barcode scanning
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
