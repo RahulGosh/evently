@@ -73,22 +73,24 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
 
   // Resolve params
   useEffect(() => {
+    if (!params) return;
+  
     const resolveParams = async () => {
       try {
         const resolved = await params;
-        setEventId(resolved.id);
+        if (resolved?.id) {
+          setEventId(resolved.id);
+        } else {
+          throw new Error("Invalid event parameters");
+        }
       } catch (error) {
-        // Don't log this error to console
         setScanResult({
           success: false,
           message: "Error resolving event parameters"
         });
       }
     };
-      if (params?.id) {
-        setEventId(params.id);
-      }
-    
+  
     resolveParams();
   }, [params]);
 
