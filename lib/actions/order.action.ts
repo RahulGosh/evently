@@ -188,3 +188,7 @@ export async function getOrdersByEvent({ searchString, eventId, sort = "desc" }:
     throw error;
   }
 }
+
+// DELETE FROM "orders" WHERE "buyerId" = '3212312312312';
+// DELETE FROM "events" WHERE "organizerId" = '3212312312312';
+// DELETE FROM "users" WHERE "id" = '3212312312312';

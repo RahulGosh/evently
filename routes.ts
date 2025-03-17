@@ -1,6 +1,6 @@
 export const publicRoutes = [
     "/",
-    "/events", // Base route
+    "/events/", // Base route
     "/events/:id", // Dynamic route
 ];
 

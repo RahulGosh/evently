@@ -1,3 +1,4 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -23,8 +24,10 @@ model User {
   role          UserRole  @default(USER)
   isAdmin       Boolean   @default(false)
   accounts      Account[]
-  events        Event[]
-  orders        Order[]
+  events        Event[]   // Events organized by this user
+  orders        Order[]   // Tickets purchased by this user
+  scannedTickets TicketScan[] // Tickets scanned by this user (employer)
+  employerEvents EmployerEvent[] // Events an employer is assigned to
 
   @@map("users")
 }
@@ -74,6 +77,8 @@ model Event {
   category      Category @relation(fields: [categoryId], references: [id])
   organizer     User     @relation(fields: [organizerId], references: [id])
   orders        Order[]
+  ticketScans   TicketScan[]
+  employerEvents EmployerEvent[]
 
   @@map("events")
 }
@@ -88,11 +93,52 @@ model Order {
   quantity    Int
   buyer       User     @relation(fields: [buyerId], references: [id])
   event       Event    @relation(fields: [eventId], references: [id])
+  barcodeId   String?  @unique
+  ticketScans TicketScan[]
 
   @@map("orders")
+}
+
+model TicketScan {
+  id          String   @id @default(uuid())
+  scannedAt   DateTime @default(now())
+  orderId     String
+  eventId     String
+  scannerId   String
+  isValid     Boolean  @default(true)
+  scanResult  ScanResult @default(VALID)
+  notes       String?
+  
+  order       Order    @relation(fields: [orderId], references: [id])
+  event       Event    @relation(fields: [eventId], references: [id])
+  scanner     User     @relation(fields: [scannerId], references: [id])
+
+  @@map("ticket_scans")
+}
+
+model EmployerEvent {
+  id          String   @id @default(uuid())
+  eventId     String
+  employerId  String
+  assignedAt  DateTime @default(now())
+  
+  event       Event    @relation(fields: [eventId], references: [id])
+  employer    User     @relation(fields: [employerId], references: [id])
+
+  @@unique([eventId, employerId])
+  @@map("employer_events")
 }
 
 enum UserRole {
   ADMIN
   USER
+  EMPLOYER
+}
+
+enum ScanResult {
+  VALID
+  INVALID
+  ALREADY_SCANNED
+  WRONG_EVENT
+  EXPIRED
 }

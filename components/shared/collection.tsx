@@ -2,6 +2,7 @@ import React from "react";
 import { Event, Category, User } from "@prisma/client";
 import Card from "./card";
 import Pagination from "./pagination";
+import DownloadTicket from "./downloadTicket";
 
 type EventWithRelations = Event & {
   category: Category;
@@ -17,6 +18,8 @@ type CollectionProps = {
   page: number | string;
   totalPages?: number;
   urlParamName?: string;
+  linkPrefix?: string;
+  onDeleteSuccess?: () => void; // ✅ Add type for onDeleteSuccess
 };
 
 const Collection = ({
@@ -27,9 +30,9 @@ const Collection = ({
   totalPages = 0,
   collectionType,
   urlParamName,
+  linkPrefix = "/events/",
+  onDeleteSuccess, // ✅ Accept refetch function
 }: CollectionProps) => {
-  console.log(page, "page collection")
-  console.log(totalPages, "totalPages collection")
   return (
     <>
       {data && data.length > 0 ? (
@@ -42,13 +45,15 @@ const Collection = ({
               return (
                 <li
                   key={`${event.id}-${index}`}
-                  className="flex justify-center"
+                  className="flex flex-col gap-4"
                 >
                   <Card
                     event={event}
                     hasOrderLink={hasOrderLink}
                     hidePrice={hidePrice}
-                    collectionType={collectionType} // Pass the collectionType prop
+                    collectionType={collectionType}
+                    linkPrefix={linkPrefix} // Pass down the prop
+                    onDeleteSuccess={onDeleteSuccess} // ✅ Pass down refetch function
                   />
                 </li>
               );

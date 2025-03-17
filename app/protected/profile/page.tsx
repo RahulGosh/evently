@@ -26,42 +26,52 @@ const ProfileContent = () => {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
+  const fetchEvents = async () => {
+    if (!userId) return;
+    setLoadingEvents(true);
+
+    try {
+      const events = await getEventsByUser(userId, { page: eventsPage });
+      setOrganizedEvents(events?.data || []);
+      setEventsTotalPages(events?.totalPages || 1);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    if (!userId) return;
+    setLoadingOrders(true);
+
+    try {
+      const orders = await getOrdersByUser({ userId, page: ordersPage });
+
+      // Filter out past events
+      const currentDate = new Date();
+      const eventsWithOrders =
+        orders?.data
+          ?.map((order: any) => ({
+            ...order.event,
+            orders: [order],
+          }))
+          ?.filter((event: any) => new Date(event.endDateTime) >= currentDate) || [];
+
+      setOrderedEvents(eventsWithOrders);
+      setOrdersTotalPages(orders?.totalPages || 1);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!userId) return;
-      setLoadingOrders(true);
-
-      try {
-        const orders = await getOrdersByUser({ userId, page: ordersPage });
-
-        setOrderedEvents(orders?.data.map((order: any) => order.event) || []);
-        setOrdersTotalPages(orders?.totalPages || 1);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-      } finally {
-        setLoadingOrders(false);
-      }
-    };
-
-    const fetchEvents = async () => {
-      if (!userId) return;
-      setLoadingEvents(true);
-
-      try {
-        const events = await getEventsByUser(userId, { page: eventsPage });
-
-        setOrganizedEvents(events?.data || []);
-        setEventsTotalPages(events?.totalPages || 1);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setLoadingEvents(false);
-      }
-    };
-
     fetchOrders();
-    fetchEvents();
+    fetchEvents(); // ✅ Now accessible
   }, [userId, ordersPage, eventsPage]);
+  
 
   return (
     <>
@@ -119,6 +129,8 @@ const ProfileContent = () => {
                 page={eventsPage}
                 urlParamName="eventsPage"
                 totalPages={eventsTotalPages}
+                onDeleteSuccess={fetchEvents} // ✅ Refetch on delete
+
               />
             )}
           </section>

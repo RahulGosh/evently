@@ -44,6 +44,7 @@ const Header = () => {
           <NavItems
             isAuthenticated={!!session}
             isAdmin={session?.user?.role === "ADMIN"}
+            isEmployer={session?.user?.role === "EMPLOYER"}
           />
         </nav>
 

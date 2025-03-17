@@ -1,7 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { db } from "../db";
 import cloudinary from "cloudinary"
+import { DeleteEventParams } from "@/types";
 
 cloudinary.v2.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -73,7 +75,7 @@ export const createEvent = async (event: any, userId: string, imageUrl: string) 
 export const getAllEvents = async ({ 
   query, 
   page = 1, 
-  limit = 3, 
+  limit = 6, 
   category 
 }: { 
   query?: string, 
@@ -252,12 +254,16 @@ const extractPublicIdFromUrl = (imageUrl: string): string | null => {
   return match ? match[1] : null;
 };
 
-export const deleteEvent = async ({ eventId, path }: { eventId: string; path: string }) => {
+export const deleteEvent = async ({
+  eventId,
+  path,
+}: {
+  eventId: string;
+  path: string;
+}) => {
   try {
     console.log("Deleting event with ID:", eventId);
-    console.log("Received eventId:", eventId);
 
-    // Find the event
     const event = await db.event.findUnique({
       where: { id: eventId },
     });
@@ -267,24 +273,81 @@ export const deleteEvent = async ({ eventId, path }: { eventId: string; path: st
       return { success: false, message: "Event not found" };
     }
 
-    // Extract and delete the image from Cloudinary
-    const imageUrl = event.imageUrl;
-    if (imageUrl) {
-      const publicId = extractPublicIdFromUrl(imageUrl);
+    // Delete related data
+    await db.ticketScan.deleteMany({ where: { eventId } });
+    await db.order.deleteMany({ where: { eventId } });
+    await db.employerEvent.deleteMany({ where: { eventId } });
+
+    // Delete the Cloudinary image if it exists
+    if (event.imageUrl) {
+      const publicId = extractPublicIdFromUrl(event.imageUrl);
       if (publicId) {
         console.log("Deleting image from Cloudinary:", publicId);
         await cloudinary.v2.uploader.destroy(publicId);
       }
     }
 
-    // Delete event from database
+    // ✅ Delete the event
     await db.event.delete({ where: { id: eventId } });
+
     console.log("Event deleted successfully");
+
+    // ✅ Revalidate the path on the server side
+    revalidatePath(path);
 
     return { success: true, message: "Event deleted successfully", path };
   } catch (error) {
     console.error("Error deleting event:", error);
     return { success: false, message: "An error occurred while deleting the event" };
+  }
+};
+
+// export async function deleteEvent({ eventId, path }: DeleteEventParams) {
+//   try {
+//     await db.event.delete({
+//       where: { id: eventId },
+//     });
+
+//     revalidatePath(path);
+//   } catch (error) {
+//     console.error("Error deleting event:", error);
+//     throw new Error("Failed to delete event");
+//   }
+// }
+export const deleteExpiredEvents = async () => {
+  try {
+    console.log("Running cleanup for expired events...");
+
+    // Find expired events
+    const expiredEvents = await db.event.findMany({
+      where: {
+        endDateTime: {
+          lt: new Date(), // Find events where endDateTime is in the past
+        },
+      },
+    });
+
+    for (const event of expiredEvents) {
+      // Delete image from Cloudinary if it exists
+      if (event.imageUrl) {
+        const publicId = extractPublicIdFromUrl(event.imageUrl);
+        if (publicId) {
+          console.log(`Deleting image from Cloudinary: ${publicId}`);
+          await cloudinary.v2.uploader.destroy(publicId);
+        }
+      }
+
+      // Delete event from database
+      await db.event.delete({
+        where: { id: event.id },
+      });
+
+      console.log(`Deleted expired event: ${event.id}`);
+    }
+
+    console.log("Expired events cleanup completed.");
+  } catch (error) {
+    console.error("Error deleting expired events:", error);
   }
 };
 

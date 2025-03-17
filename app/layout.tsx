@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Footer from "@/components/shared/footer";
 import Header from "@/components/shared/header";
+import "@/lib/cron"; // Import the cron job
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,6 @@ export default function RootLayout({
           {children}
         </body>
       </html>
-      </SessionProvider>
+    </SessionProvider>
   );
 }

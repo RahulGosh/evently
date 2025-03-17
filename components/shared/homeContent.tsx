@@ -20,7 +20,7 @@ export async function HomeContent({ page, searchText, category }: HomeContentPro
     limit: 6,
     page,
   });
-  console.log(eventsData, "evetsData")
+  console.log(eventsData, "eventsData")
   return (
     <>
       <section className="bg-primary-50 bg-dotted-pattern bg-contain py-5 md:py-10">

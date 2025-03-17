@@ -1,16 +1,18 @@
 "use client";
 
+import React from "react";
 import { formatDateTime } from "@/lib/utils";
 import { Category, Event, User } from "@prisma/client";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
 import { DeleteConfirmation } from "./deleteConfirmationDialog";
+import DownloadTicket from "./downloadTicket";
 
 type EventWithRelations = Event & {
   category: Category;
   organizer: User;
+  orders?: any[];
 };
 
 type CardProps = {
@@ -19,6 +21,8 @@ type CardProps = {
   hidePrice?: boolean;
   eventCreator?: boolean;
   collectionType?: string;
+  linkPrefix?: string;
+  onDeleteSuccess?: () => void; // ✅ Add type for onDeleteSuccess
 };
 
 function Card({
@@ -27,28 +31,27 @@ function Card({
   hidePrice,
   eventCreator,
   collectionType,
+  linkPrefix = "/events/", // Default path
+  onDeleteSuccess, // ✅ Pass down refetch function
 }: CardProps) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
   const isEventCreator = userId === event.organizerId.toString();
-
-  const userRole = session?.user?.role; // Directly use the role without type assertion
+  const userRole = session?.user?.role;
   const isAdmin = userRole === "ADMIN";
 
   return (
     <div className="group relative flex min-h-[380px] w-full max-w-[400px] flex-col overflow-hidden rounded-xl bg-white shadow-md transition-all hover:shadow-lg md:min-h-[438px]">
       <Link
-        href={`/events/${event.id}`}
+        href={`${linkPrefix}/${event.id}/`}
         style={{ backgroundImage: `url(${event.imageUrl})` }}
         className="flex-center flex-grow bg-gray-50 bg-cover bg-center text-grey-500"
       />
-      {/* IS EVENT CREATOR ... */}
 
-      {/* IS EVENT CREATOR ... */}
       {(isEventCreator || isAdmin || hidePrice) &&
         collectionType !== "All_Events" &&
-        collectionType !== "My_Tickets" && ( // Exclude My_Tickets collection
+        collectionType !== "My_Tickets" && (
           <div className="absolute right-2 top-2 flex flex-col gap-4 rounded-xl bg-white p-3 shadow-sm transition-all">
             <Link href={`/protected/admin/events/${event.id}/update`}>
               <Image
@@ -59,11 +62,11 @@ function Card({
               />
             </Link>
 
-            <DeleteConfirmation eventId={event.id} />
+            <DeleteConfirmation eventId={event.id} onDeleteSuccess={onDeleteSuccess} />
           </div>
         )}
 
-      <div className="flex min-h-[230px] flex-col gap-3 p-5 md:gap-4">
+      <div className="flex flex-col min-h-[230px] gap-3 p-5 md:gap-4">
         <div className="flex gap-2">
           {!hidePrice && (
             <span className="p-semibold-14 w-min rounded-full bg-green-100 px-4 py-1 text-green-60">
@@ -85,15 +88,26 @@ function Card({
           </p>
         </Link>
 
-        <div className="flex-between w-full">
-          <p className="p-medium-14 md:p-medium-16 text-grey-600">
-            {event?.organizer?.name}
-          </p>
+        <p className="p-medium-14 md:p-medium-16 text-grey-600">
+          {event?.organizer?.name}
+        </p>
 
-          {hasOrderLink && (
+        {collectionType === "My_Tickets" &&
+          event.orders &&
+          event.orders.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {event.orders.map((order) => (
+                <DownloadTicket key={order.id} event={event} order={order} />
+              ))}
+            </div>
+          )}
+
+        {/* Order Details at the Bottom */}
+        {hasOrderLink && (
+          <div className="mt-auto flex justify-end">
             <Link
               href={`/protected/admin/orders?eventId=${event.id}`}
-              className="flex gap-2"
+              className="flex items-center gap-2"
             >
               <p className="text-primary-500">Order Details</p>
               <Image
@@ -103,8 +117,8 @@ function Card({
                 height={10}
               />
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

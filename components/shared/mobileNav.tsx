@@ -24,6 +24,9 @@ const MobileNav = () => {
     await signOut();
   };
 
+  const isAdmin = session?.user?.role === "ADMIN";
+  const isEmployer = session?.user?.role === "EMPLOYER"; // Add employer check
+
   return (
     <nav className="md:hidden">
       <Sheet>
@@ -51,7 +54,8 @@ const MobileNav = () => {
           {/* Navigation Items */}
           <NavItems 
             isAuthenticated={!!session} 
-            isAdmin={session?.user?.role === "ADMIN"} 
+            isAdmin={isAdmin} 
+            isEmployer={isEmployer} // ✅ Pass isEmployer prop
           />
 
           <div className="mt-auto">

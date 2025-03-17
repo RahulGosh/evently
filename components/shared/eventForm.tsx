@@ -114,6 +114,7 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
       if (type === "Create") {
         const newEvent = await createEvent(values, userId, imageUrl);
         console.log("Event created:", newEvent);
+      router.push("/");
       } else {
         if (!eventId) throw new Error("Event ID is required for updates");
         const updatedEvent = await updateEvent(
@@ -122,9 +123,9 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
           userId
         );
         console.log("Event updated:", updatedEvent);
+      router.push("/protected/profile");
       }
 
-      router.push("/"); // Redirect after successful operation
     } catch (error) {
       console.error(`Failed to ${type.toLowerCase()} event:`, error);
     } finally {

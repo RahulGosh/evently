@@ -37,7 +37,7 @@ const UpdateRoleContent = () => {
 
         const response = await getAllUsers({
           searchString: searchText,
-          role: role === "USER" || role === "ADMIN" ? role : undefined, // Validate role
+          role: role === "USER" || role === "ADMIN" || role === "EMPLOYER" ? role : undefined, // Validate role
         });
 
         if (response.users) {
@@ -95,6 +95,7 @@ const UpdateRoleContent = () => {
                 {/* Use "all" instead of empty string */}
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="USER">User</SelectItem>
+                <SelectItem value="EMPLOYER">EMPLOYER</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -157,6 +158,13 @@ const UpdateRoleContent = () => {
                             >
                               ADMIN
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleUpdateUserRole(user.id, "EMPLOYER")
+                              }
+                            >
+                              EMPLOYER
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -180,3 +188,7 @@ const UpdateRole = () => {
 }
 
 export default UpdateRole;
+
+
+// and i wanna make something like when user is employeer then it has scan option , employyer can scan other peoples barcode and inside scanner it has all the events when emplyeer select any particular event adn that event has all the scanner, like if user has purchased ticekt it has barcode and employeer has to scan that barcode if that barcode match with the event id and also barcode is right not a fake then add that perons ticket in that event scanner
+
