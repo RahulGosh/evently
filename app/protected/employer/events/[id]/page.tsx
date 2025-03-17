@@ -37,6 +37,16 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
   const [scannedTickets, setScannedTickets] = useState<TicketScan[]>([]);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState<string>("prompt");
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && !qrScannerRef.current) {
+      qrScannerRef.current = new Html5Qrcode("qr-scanner-container");
+    }
+  }, []);
+
+  
+
+
+
   // Check camera permission status on mount
   useEffect(() => {
     const checkCameraPermissions = async () => {
@@ -56,8 +66,10 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
       }
     };
     
-    checkCameraPermissions();
-  }, []);
+    if (typeof window !== "undefined") {
+      checkCameraPermissions();
+    }
+    }, []);
 
   // Resolve params
   useEffect(() => {
@@ -73,6 +85,9 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
         });
       }
     };
+      if (params?.id) {
+        setEventId(params.id);
+      }
     
     resolveParams();
   }, [params]);
