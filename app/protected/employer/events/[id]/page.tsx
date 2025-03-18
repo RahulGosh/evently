@@ -5,7 +5,7 @@ import { Upload, CheckCircle, AlertCircle, RefreshCw, ImageIcon } from "lucide-r
 import { useSession } from "next-auth/react";
 import { getScannedTickets, scanTicket } from "@/lib/actions/ticket.action";
 import { Html5Qrcode } from "html5-qrcode";
-import ScannedTicketsList from "@/components/shared/scannedTicketList";
+import ScannedTicketsList, { ExtendedTicketScan } from "@/components/shared/scannedTicketList";
 import { TicketScan } from "@prisma/client";
 import { useSearchParams } from "next/navigation";
 
@@ -84,7 +84,7 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
     resolveParams();
   }, [params]);
 
-  const validTickets = scannedTickets.filter((ticket) => ticket.isValid);
+const validTickets = scannedTickets.filter((ticket) => ticket.isValid) as ExtendedTicketScan[];
 
 
   // Fetch scanned tickets when eventId changes
@@ -95,7 +95,6 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
       setLoading(true);
       try {
         const { scannedTickets, totalPages } = await getScannedTickets(eventId, page, limit);
-        const validTickets = scannedTickets.filter((ticket) => ticket.isValid);
         setScannedTickets(scannedTickets);
         setTotalPages(totalPages);
       } catch (error) {

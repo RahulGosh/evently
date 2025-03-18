@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "../db";
-import cloudinary from "cloudinary"
+import cloudinary from "cloudinary";
 import { DeleteEventParams } from "@/types";
 
 cloudinary.v2.config({
@@ -19,7 +19,11 @@ const getCategoryByName = async (name: string) => {
   });
 };
 
-export const createEvent = async (event: any, userId: string, imageUrl: string) => {
+export const createEvent = async (
+  event: any,
+  userId: string,
+  imageUrl: string
+) => {
   try {
     if (!userId) {
       throw new Error("User ID is required");
@@ -70,18 +74,18 @@ export const createEvent = async (event: any, userId: string, imageUrl: string) 
     console.error("Error creating event:", error.message || error);
     throw new Error(error.message || "Failed to create event");
   }
-}  
+};
 
-export const getAllEvents = async ({ 
-  query, 
-  page = 1, 
-  limit = 6, 
-  category 
-}: { 
-  query?: string, 
-  page?: number, 
-  limit?: number, 
-  category?: string 
+export const getAllEvents = async ({
+  query,
+  page = 1,
+  limit = 6,
+  category,
+}: {
+  query?: string;
+  page?: number;
+  limit?: number;
+  category?: string;
 } = {}) => {
   try {
     const whereConditions: any = {};
@@ -108,7 +112,7 @@ export const getAllEvents = async ({
       orderBy: {
         startDateTime: "asc",
       },
-      skip,  // Offset for pagination
+      skip, // Offset for pagination
       take: limit, // Limit results
     });
 
@@ -116,7 +120,7 @@ export const getAllEvents = async ({
 
     return {
       data: events,
-      totalCount, 
+      totalCount,
       totalPages: Math.ceil(totalCount / limit), // Calculate total pages
       currentPage: page,
     };
@@ -126,9 +130,12 @@ export const getAllEvents = async ({
   } finally {
     await db.$disconnect();
   }
-}; 
+};
 
-export const getEventsByUser = async (userId: string, { page = 1, limit = 6 } = {}) => {
+export const getEventsByUser = async (
+  userId: string,
+  { page = 1, limit = 6 } = {}
+) => {
   try {
     if (!userId) {
       throw new Error("User ID is required");
@@ -315,7 +322,10 @@ export const deleteEvent = async ({
     return { success: true, message: "Event deleted successfully", path };
   } catch (error) {
     console.error("Error deleting event:", error);
-    return { success: false, message: "An error occurred while deleting the event" };
+    return {
+      success: false,
+      message: "An error occurred while deleting the event",
+    };
   }
 };
 
@@ -347,7 +357,9 @@ export const deleteExpiredEvents = async () => {
       },
     });
 
-    console.log(`Found ${expiredEvents.length} events to delete (expired more than 10 hours ago)`);
+    console.log(
+      `Found ${expiredEvents.length} events to delete (expired more than 10 hours ago)`
+    );
 
     for (const event of expiredEvents) {
       // Delete related data
@@ -380,7 +392,11 @@ export const deleteExpiredEvents = async () => {
   }
 };
 
-export const updateEvent = async (eventId: string, eventData: any, userId: string) => {
+export const updateEvent = async (
+  eventId: string,
+  eventData: any,
+  userId: string
+) => {
   try {
     if (!userId) {
       throw new Error("User ID is required");
