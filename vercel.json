@@ -1,13 +1,13 @@
 {
-    "build": {
-      "env": {
-        "DATABASE_URL": "postgresql://evently-database_owner:npg_fc1wS6bliROV@ep-odd-morning-a8ax5gb7-pooler.eastus2.azure.neon.tech/evently-database?sslmode=require"
-      }
-    },
-    "crons": [
-      {
-        "path": "/api/cron/cleanup-events",
-        "schedule": "0 * * * *"
-      }
-    ]
-  }
+  "build": {
+    "env": {
+      "DATABASE_URL": "postgresql://evently-database_owner:npg_fc1wS6bliROV@ep-odd-morning-a8ax5gb7-pooler.eastus2.azure.neon.tech/evently-database?sslmode=require"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-events",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
