@@ -2,6 +2,8 @@ export const publicRoutes = [
     "/",
     "/events/", // Base route
     "/events/:id", // Dynamic route
+    "/protected/employer/events",
+    "/protected/employer/events:id"
 ];
 
 export const authRoutes= [

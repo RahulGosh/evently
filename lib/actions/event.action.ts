@@ -264,33 +264,50 @@ export const deleteEvent = async ({
   try {
     console.log("Deleting event with ID:", eventId);
 
-    const event = await db.event.findUnique({
-      where: { id: eventId },
-    });
+    const deletedEvent = await db.$transaction(async (prisma) => {
+      // ✅ Find the event to delete
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { id: true, startDateTime: true, imageUrl: true },
+      });
 
-    if (!event) {
-      console.log("Event not found");
-      return { success: false, message: "Event not found" };
-    }
-
-    // Delete related data
-    await db.ticketScan.deleteMany({ where: { eventId } });
-    await db.order.deleteMany({ where: { eventId } });
-    await db.employerEvent.deleteMany({ where: { eventId } });
-
-    // Delete the Cloudinary image if it exists
-    if (event.imageUrl) {
-      const publicId = extractPublicIdFromUrl(event.imageUrl);
-      if (publicId) {
-        console.log("Deleting image from Cloudinary:", publicId);
-        await cloudinary.v2.uploader.destroy(publicId);
+      if (!event) {
+        console.log("Event not found");
+        throw new Error("Event not found");
       }
-    }
 
-    // ✅ Delete the event
-    await db.event.delete({ where: { id: eventId } });
+      const isExpired = new Date(event.startDateTime) < new Date();
 
-    console.log("Event deleted successfully");
+      // ✅ If the event is expired, delete associated orders
+      if (isExpired) {
+        console.log("Event is expired, deleting related orders...");
+        await prisma.order.deleteMany({
+          where: { eventId },
+        });
+      }
+
+      // ✅ Delete other related data (if it exists)
+      await prisma.ticketScan.deleteMany({ where: { eventId } });
+      await prisma.employerEvent.deleteMany({ where: { eventId } });
+
+      // ✅ Delete Cloudinary image if it exists
+      if (event.imageUrl) {
+        const publicId = extractPublicIdFromUrl(event.imageUrl);
+        if (publicId) {
+          console.log("Deleting image from Cloudinary:", publicId);
+          await cloudinary.v2.uploader.destroy(publicId);
+        }
+      }
+
+      // ✅ Delete the event itself
+      const deletedEvent = await prisma.event.delete({
+        where: { id: eventId },
+      });
+
+      console.log("Event deleted successfully");
+
+      return deletedEvent;
+    });
 
     // ✅ Revalidate the path on the server side
     revalidatePath(path);
@@ -318,16 +335,26 @@ export const deleteExpiredEvents = async () => {
   try {
     console.log("Running cleanup for expired events...");
 
-    // Find expired events
+    const tenHoursAgo = new Date();
+    tenHoursAgo.setHours(tenHoursAgo.getHours() - 10);
+
+    // Find expired events that ended at least 10 hours ago
     const expiredEvents = await db.event.findMany({
       where: {
         endDateTime: {
-          lt: new Date(), // Find events where endDateTime is in the past
+          lt: tenHoursAgo, // Find events where endDateTime is at least 10 hours in the past
         },
       },
     });
 
+    console.log(`Found ${expiredEvents.length} events to delete (expired more than 10 hours ago)`);
+
     for (const event of expiredEvents) {
+      // Delete related data
+      await db.ticketScan.deleteMany({ where: { eventId: event.id } });
+      await db.order.deleteMany({ where: { eventId: event.id } });
+      await db.employerEvent.deleteMany({ where: { eventId: event.id } });
+
       // Delete image from Cloudinary if it exists
       if (event.imageUrl) {
         const publicId = extractPublicIdFromUrl(event.imageUrl);
@@ -342,12 +369,14 @@ export const deleteExpiredEvents = async () => {
         where: { id: event.id },
       });
 
-      console.log(`Deleted expired event: ${event.id}`);
+      console.log(`Deleted expired event: ${event.id} (${event.title})`);
     }
 
     console.log("Expired events cleanup completed.");
+    return { success: true, deletedCount: expiredEvents.length };
   } catch (error) {
     console.error("Error deleting expired events:", error);
+    return { success: false, error };
   }
 };
 

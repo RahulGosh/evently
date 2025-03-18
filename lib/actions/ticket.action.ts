@@ -154,8 +154,10 @@ export async function scanTicket(
 /**
  * Get all scanned tickets for an event
  */
-export async function getScannedTickets(eventId: string) {
+export async function getScannedTickets(eventId: string, page: number = 1, limit: number = 10) {
   try {
+    const skip = (page - 1) * limit;
+
     const scannedTickets = await db.ticketScan.findMany({
       where: {
         eventId: eventId,
@@ -165,8 +167,6 @@ export async function getScannedTickets(eventId: string) {
           select: {
             id: true,
             name: true,
-            email: true,
-            image: true,
           },
         },
         order: {
@@ -175,8 +175,6 @@ export async function getScannedTickets(eventId: string) {
               select: {
                 id: true,
                 name: true,
-                email: true,
-                image: true,
               },
             },
           },
@@ -185,9 +183,19 @@ export async function getScannedTickets(eventId: string) {
       orderBy: {
         scannedAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
-    return scannedTickets;
+    // Get total count for pagination
+    const totalCount = await db.ticketScan.count({
+      where: { eventId: eventId },
+    });
+
+    return {
+      scannedTickets,
+      totalPages: Math.ceil(totalCount / limit),
+    };
   } catch (error) {
     console.error("Error fetching scanned tickets:", error);
     throw error;

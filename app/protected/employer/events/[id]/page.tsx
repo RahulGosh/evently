@@ -7,6 +7,7 @@ import { getScannedTickets, scanTicket } from "@/lib/actions/ticket.action";
 import { Html5Qrcode } from "html5-qrcode";
 import ScannedTicketsList from "@/components/shared/scannedTicketList";
 import { TicketScan } from "@prisma/client";
+import { useSearchParams } from "next/navigation";
 
 type EmployerTicketScannerProps = {
   params: Promise<{ id: string }>;
@@ -14,6 +15,8 @@ type EmployerTicketScannerProps = {
 
 const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
   const { data: session } = useSession();
+  const searchParams = useSearchParams()
+
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -21,6 +24,10 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const cameraRetryRef = useRef<NodeJS.Timeout | null>(null);
   const [eventId, setEventId] = useState<string>("");
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
+  const [loading, setLoading] = useState(false);
+  const limit = 3;
   
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{
@@ -77,20 +84,24 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
     resolveParams();
   }, [params]);
 
+  const validTickets = scannedTickets.filter((ticket) => ticket.isValid);
+
+
   // Fetch scanned tickets when eventId changes
   useEffect(() => {
     if (!eventId) return;
     
     const fetchScannedTickets = async () => {
+      setLoading(true);
       try {
-        const tickets = await getScannedTickets(eventId);
-        setScannedTickets(tickets);
+        const { scannedTickets, totalPages } = await getScannedTickets(eventId, page, limit);
+        const validTickets = scannedTickets.filter((ticket) => ticket.isValid);
+        setScannedTickets(scannedTickets);
+        setTotalPages(totalPages);
       } catch (error) {
-        // Handle error without console logging
-        setScanResult({
-          success: false,
-          message: "Error loading scanned tickets"
-        });
+        console.error("Error loading scanned tickets:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -157,9 +168,10 @@ const EmployerTicketScanner = ({ params }: EmployerTicketScannerProps) => {
           ticketId,
         });
   
-        // Refresh the scanned tickets list
-        const tickets = await getScannedTickets(eventId);
-        setScannedTickets(tickets);
+        const { scannedTickets, totalPages } = await getScannedTickets(eventId, page, limit);
+        const validTickets = scannedTickets.filter((ticket) => ticket.isValid);
+        setScannedTickets(scannedTickets);
+        setTotalPages(totalPages);
       } else {
         setScanResult({
           success: false,
@@ -697,7 +709,7 @@ return (
     </div>
 
     {/* Scanned Tickets List */}
-    {scannedTickets.length > 0 && (
+    {/* {scannedTickets.length > 0 && (
       <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
         <div className="p-4 bg-gray-50 border-b">
           <h2 className="text-lg font-semibold">
@@ -706,28 +718,57 @@ return (
           </h2>
         </div>
         <ScannedTicketsList
-          scannedTickets={scannedTickets}
-          h2ScannedText="Total Tickets Scanned"
+            scannedTickets={scannedTickets}
+            h2ScannedText="Total Tickets Scanned"
           length={scannedTickets.length}
+          page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
         />
       </div>
-    )}
+    )} */}
 
-    {scannedTickets.filter((ticket) => ticket.isValid).length > 0 && (
-      <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
-        <div className="p-4 bg-gray-50 border-b">
-          <h2 className="text-lg font-semibold">
-            Valid Scanned Tickets (
-            {scannedTickets.filter((ticket) => ticket.isValid).length})
-          </h2>
+{/* {scannedTickets.length > 0 && (
+        <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
+          <div className="p-4 bg-gray-50 border-b">
+            <h2 className="text-lg font-semibold">
+              Total Scanned Tickets ({scannedTickets.length}) - Valid Tickets ({validTickets.length})
+            </h2>
+          </div>
+          <ScannedTicketsList
+            scannedTickets={scannedTickets}
+            h2ScannedText="Total Tickets Scanned"
+            length={scannedTickets.length}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </div>
-        <ScannedTicketsList
-          scannedTickets={scannedTickets.filter((ticket) => ticket.isValid)}
-          h2ScannedText="Valid Tickets"
-          length={scannedTickets.filter((ticket) => ticket.isValid).length}
-        />
-      </div>
-    )}
+      )} */}
+
+      {/* ✅ Show only valid tickets */}
+      {validTickets.length > 0 ? (
+        <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
+          <div className="p-4 bg-gray-50 border-b">
+            <h2 className="text-lg font-semibold">
+              Valid Scanned Tickets ({validTickets.length})
+            </h2>
+          </div>
+          <ScannedTicketsList
+            scannedTickets={validTickets}
+            h2ScannedText="Valid Tickets"
+            length={validTickets.length}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      ) : (
+        // ✅ Handle empty valid tickets separately
+        <div className="mt-8 text-center text-gray-500">
+          <p>No valid tickets found</p>
+        </div>
+      )}
   </div>
 );
 };
