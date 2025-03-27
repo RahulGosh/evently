@@ -17,13 +17,13 @@ export const checkoutOrder = async (order: CheckoutOrderParams) => {
     throw new Error("Stripe secret key is missing. Check your .env file.");
   }
 
-  const price = order.isFree ? 0 : (Number(order.price) / order.quantity) * 100;
+  const price = order.isFree ? 0 : (Number(order.price) / order.quantity) * 100; // Ensure it's in paise
   try {
   const session = await stripe.checkout.sessions.create({
     line_items: [
       {
         price_data: {
-          currency: "usd",
+          currency: "inr",
           unit_amount: price,
           product_data: {
             name: order.eventTitle,
