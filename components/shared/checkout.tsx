@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { Event } from "@prisma/client";
 import { checkoutOrder } from "@/lib/actions/order.action";
@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "../ui/input";
+import { applyCoupon } from "@/lib/actions/coupon.action";
+import { X } from "lucide-react"; // Import X icon for the remove button
 
 loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -27,22 +30,72 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponApplied, setCouponApplied] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    if (query.get("success")) {
-      console.log("Order placed! You will receive an email confirmation.");
-    }
-    if (query.get("canceled")) {
-      console.log(
-        "Order canceled -- continue to shop around and checkout when you're ready."
-      );
-    }
-  }, []);
 
   const maxTickets = Math.min(5, event.ticketsLeft);
   const ticketOptions = Array.from({ length: maxTickets }, (_, i) => i + 1);
+
+  const calculateTotal = () => {
+    const baseTotal = Number(event.price) * quantity;
+    const total = baseTotal - discountAmount;
+    return Math.max(total, 0);
+  };
+
+  const resetCoupon = () => {
+    setCouponApplied(false);
+    setDiscountAmount(0);
+    setCouponCode("");
+    setError(null);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setError("Please enter a coupon code");
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+    setError(null);
+    
+    try {
+      const result = await applyCoupon({
+        code: couponCode.trim(),
+        eventId: event.id,
+        price: event.price,
+        quantity: quantity
+      });
+
+      if (result.valid) {
+        setDiscountAmount(Number(result.discountAmount));
+        setCouponApplied(true);
+      } else {
+        resetCoupon();
+        setError(result.message || "Invalid coupon code");
+      }
+    } catch (error) {
+      console.error("Coupon application error:", error);
+      resetCoupon();
+      setError("Failed to apply coupon. Please try again.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    resetCoupon();
+  };
+
+  const handleQuantityChange = (value: string) => {
+    const newQuantity = parseInt(value);
+    setQuantity(newQuantity);
+    if (couponApplied) {
+      resetCoupon();
+    }
+  };
 
   const onCheckout = async () => {
     if (quantity > event.ticketsLeft) {
@@ -55,15 +108,17 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
       return;
     }
 
-    setLoading(true); // Start loading
+    setLoading(true);
+    setError(null);
 
     const order = {
       eventTitle: event.title,
       eventId: event.id,
-      price: Number(event.price) * quantity,
+      price: event.price,
       isFree: event.isFree,
       buyerId: userId,
       quantity: quantity,
+      code: couponApplied ? couponCode : undefined,
     };
 
     try {
@@ -72,8 +127,10 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
         window.location.href = result.url;
       }
     } catch (error) {
+      console.error("Checkout error:", error);
       setError("Something went wrong. Please try again.");
-      setLoading(false); // Stop loading in case of failure
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,58 +165,18 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {!event.isFree && (
-            <div className="py-4">
-              <RadioGroup
-                defaultValue="1"
-                onValueChange={(value) => setQuantity(parseInt(value))}
-                className="flex flex-col space-y-2"
-              >
-                {ticketOptions.map((num) => (
-                  <div
-                    key={num}
-                    className="flex items-center justify-between space-x-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem
-                        value={num.toString()}
-                        id={`ticket-${num}`}
-                      />
-                      <Label
-                        htmlFor={`ticket-${num}`}
-                        className="text-gray-900 dark:text-gray-100"
-                      >
-                        {num} {num === 1 ? "Ticket" : "Tickets"}
-                      </Label>
-                    </div>
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                      ${Number(event.price) * num}
-                    </span>
-                  </div>
-                ))}
-              </RadioGroup>
-
-              <div className="mt-4 p-3 bg-gray-200 dark:bg-gray-700 rounded-md">
-                <div className="flex justify-between font-semibold text-gray-900 dark:text-gray-100">
-                  <span>Total:</span>
-                  <span>${Number(event.price) * quantity}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {event.isFree && (
-            <div className="py-4">
-              <RadioGroup
-                defaultValue="1"
-                onValueChange={(value) => setQuantity(parseInt(value))}
-                className="flex flex-col space-y-2"
-              >
-                {ticketOptions.map((num) => (
-                  <div
-                    key={num}
-                    className="flex items-center space-x-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                  >
+          <div className="py-4">
+            <RadioGroup
+              defaultValue="1"
+              onValueChange={handleQuantityChange}
+              className="flex flex-col space-y-2"
+            >
+              {ticketOptions.map((num) => (
+                <div
+                  key={num}
+                  className="flex items-center justify-between space-x-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                >
+                  <div className="flex items-center space-x-2">
                     <RadioGroupItem
                       value={num.toString()}
                       id={`ticket-${num}`}
@@ -171,10 +188,67 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
                       {num} {num === 1 ? "Ticket" : "Tickets"}
                     </Label>
                   </div>
-                ))}
-              </RadioGroup>
-            </div>
-          )}
+                  {!event.isFree && (
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      ${(Number(event.price) * num).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </RadioGroup>
+
+            {!event.isFree && (
+              <>
+                <div className="mt-4">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      disabled={isApplyingCoupon || couponApplied}
+                      className="flex-1"
+                    />
+                    {couponApplied ? (
+                      <Button
+                        onClick={handleRemoveCoupon}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <X size={16} /> Remove
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleApplyCoupon}
+                        disabled={isApplyingCoupon || !couponCode.trim()}
+                        size="sm"
+                        variant="outline"
+                      >
+                        {isApplyingCoupon ? "Applying..." : "Apply"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2 p-3 bg-gray-200 dark:bg-gray-700 rounded-md">
+                  <div className="flex justify-between text-gray-900 dark:text-gray-100">
+                    <span>Subtotal:</span>
+                    <span>${(Number(event.price) * quantity).toFixed(2)}</span>
+                  </div>
+                  {couponApplied && (
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                      <span>Discount:</span>
+                      <span>-${discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-semibold text-gray-900 dark:text-gray-100 border-t pt-2 mt-2">
+                    <span>Total:</span>
+                    <span>${calculateTotal().toFixed(2)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           {error && (
             <div className="mt-2 p-3 bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 rounded-md">

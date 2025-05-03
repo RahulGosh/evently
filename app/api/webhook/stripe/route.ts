@@ -17,8 +17,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  console.log("🔹 Webhook signature received:", sig);
-
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
@@ -28,12 +26,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Webhook error", error: err }, { status: 400 });
   }
 
-  // Extract event type
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     console.log("✅ Payment successful. Session data:", session);
 
-    // Ensure metadata exists to avoid undefined errors
     if (!session.metadata) {
       console.error("❌ Metadata is missing in session:", session);
       return NextResponse.json({ message: "Invalid session data" }, { status: 400 });
@@ -45,7 +41,8 @@ export async function POST(request: Request) {
       buyerId: session.metadata.buyerId || '',
       totalAmount: session.amount_total ? (session.amount_total / 100).toString() : '0',
       quantity: session.metadata.quantity ? parseInt(session.metadata.quantity, 10) : 1,
-      createdAt: new Date(),
+      couponId: session.metadata.couponId || undefined,
+      discountAmount: session.metadata.discountAmount || '0',
     };
 
     console.log("📦 Creating order:", order);
@@ -58,8 +55,6 @@ export async function POST(request: Request) {
       console.error("❌ Error creating order:", err);
       return NextResponse.json({ message: "Database error", error: err }, { status: 500 });
     }
-  } else {
-    console.log("ℹ️ Unhandled event type:", event.type);
   }
 
   return new Response('', { status: 200 });

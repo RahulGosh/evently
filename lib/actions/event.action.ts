@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { db } from "../db";
 import cloudinary from "cloudinary";
-import { DeleteEventParams } from "@/types";
+import { CreateEventParams, DeleteEventParams } from "@/types";
+import { createCoupon, CreateCouponParams } from "./coupon.action";
+import { formatDateTime } from "../utils";
 
 cloudinary.v2.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -20,59 +22,132 @@ const getCategoryByName = async (name: string) => {
 };
 
 export const createEvent = async (
-  event: any,
+  event: CreateEventParams,
   userId: string,
-  imageUrl: string
+  imageUrl: string,
+  coupons?: CreateCouponParams[],
 ) => {
   try {
-    if (!userId) {
-      throw new Error("User ID is required");
+    // Validate inputs
+    if (!userId) throw new Error("User ID is required");
+    if (!imageUrl) throw new Error("Image URL is required");
+    if (Number(event?.event?.ticketsLeft) < 0) {
+      throw new Error("Tickets left cannot be negative");
     }
-
-    console.log("User ID:", userId);
-
-    console.log("Creating event with userId:", userId);
 
     // Check if the user exists
-    const organizer = await db.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!organizer) {
-      throw new Error("Organizer not found");
-    }
+    const organizer = await db.user.findUnique({ where: { id: userId } });
+    if (!organizer) throw new Error("Organizer not found");
 
     // Check if the category exists
     const category = await db.category.findUnique({
-      where: { id: event.categoryId },
+      where: { id: event?.event?.categoryId },
+    });
+    if (!category) throw new Error("Category not found");
+
+    // Create event transaction
+    const result = await db.$transaction(async (prisma) => {
+      // Base event data
+      const eventData: any = {
+        title: event?.event?.title,
+        description: event?.event?.description,
+        location: event?.event?.location || "",
+        imageUrl,
+        startDateTime: event?.event?.startDateTime,
+        endDateTime: event?.event?.endDateTime,
+        price: event?.event?.price,
+        isFree: event?.event?.isFree,
+        url: event?.event?.url || null,
+        categoryId: event?.event?.categoryId,
+        organizerId: userId,
+        ticketsLeft: event?.event?.ticketsLeft,
+      };
+
+      const newEvent = await prisma.event.create({
+        data: eventData,
+      });
+
+      // Create coupons if provided
+      if (coupons && coupons.length > 0) {
+        await Promise.all(
+          coupons.map((coupon) =>
+            prisma.coupon.create({
+              data: {
+                code: coupon.code,
+                discount: coupon.discount,
+                isPercentage: coupon.isPercentage,
+                maxUses: coupon.maxUses,
+                startDate: coupon.startDate || new Date(),
+                endDate: coupon.endDate,
+                eventId: newEvent.id,
+              },
+            })
+          )
+        );
+      }
+
+      return newEvent;
     });
 
-    if (!category) {
-      throw new Error("Category not found");
+    return result;
+  } catch (error: any) {
+    console.error("Error creating event:", error);
+    throw new Error(error.message || "Failed to create event");
+  }
+};
+
+// Create multiple coupons for an event
+export const createEventCoupons = async (
+  eventId: string,
+  coupons: CreateCouponParams[]
+) => {
+  try {
+    if (!eventId) throw new Error("Event ID is required");
+    if (!coupons?.length) return [];
+
+    // Verify event exists
+    const event = await db.event.findUnique({ where: { id: eventId } });
+    if (!event) throw new Error("Event not found");
+
+    // Check for duplicate codes in this batch
+    const couponCodes = coupons.map((c) => c.code);
+    if (new Set(couponCodes).size !== couponCodes.length) {
+      throw new Error("Duplicate coupon codes in this request");
     }
 
-    // Create new event
-    const newEvent = await db.event.create({
-      data: {
-        title: event.title,
-        description: event.description,
-        location: event.location || "",
-        imageUrl: imageUrl,
-        startDateTime: event.startDateTime,
-        endDateTime: event.endDateTime,
-        price: event.price,
-        isFree: event.isFree ?? false,
-        url: event.url || null,
-        categoryId: event.categoryId,
-        organizerId: userId,
-        ticketsLeft: event.ticketsLeft,
+    // Check for existing coupons with same codes
+    const existingCoupons = await db.coupon.findMany({
+      where: {
+        eventId,
+        code: { in: couponCodes },
       },
     });
 
-    return newEvent;
+    if (existingCoupons.length > 0) {
+      throw new Error(
+        `Some coupon codes already exist: ${existingCoupons
+          .map((c) => c.code)
+          .join(", ")}`
+      );
+    }
+
+    // Create all coupons in a transaction
+    const createdCoupons = await db.$transaction(
+      coupons.map((coupon) =>
+        db.coupon.create({
+          data: {
+            ...coupon,
+            eventId,
+            startDate: coupon.startDate || new Date(),
+          },
+        })
+      )
+    );
+
+    return createdCoupons;
   } catch (error: any) {
-    console.error("Error creating event:", error.message || error);
-    throw new Error(error.message || "Failed to create event");
+    console.error("Error creating coupons:", error);
+    throw new Error(error.message || "Failed to create coupons");
   }
 };
 
@@ -174,30 +249,19 @@ export const getEventsByUser = async (
 };
 
 export const getEventById = async (eventId: string) => {
-  try {
-    if (!eventId) {
-      throw new Error("Event ID is required");
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+    include: {
+      category: true,
+      organizer: true
     }
+  });
 
-    const event = await db.event.findUnique({
-      where: { id: eventId },
-      include: {
-        category: true, // Include category details
-        organizer: true, // Include organizer details
-      },
-    });
+  if (!event) throw new Error('Event not found');
 
-    if (!event) {
-      throw new Error("Event not found");
-    }
-
-    return event;
-  } catch (error: any) {
-    console.error("Error fetching event:", error.message || error);
-    throw new Error(error.message || "Failed to fetch event");
-  } finally {
-    await db.$disconnect();
-  }
+  return {
+    ...event,
+  };
 };
 
 export const getRelatedEventsByCategory = async ({
@@ -293,9 +357,15 @@ export const deleteEvent = async ({
         });
       }
 
-      // ✅ Delete other related data (if it exists)
+      // ✅ Delete all related data
       await prisma.ticketScan.deleteMany({ where: { eventId } });
       await prisma.employerEvent.deleteMany({ where: { eventId } });
+      
+      // ✅ NEW: Delete all coupons associated with the event
+      console.log("Deleting associated coupons...");
+      await prisma.coupon.deleteMany({ 
+        where: { eventId } 
+      });
 
       // ✅ Delete Cloudinary image if it exists
       if (event.imageUrl) {
@@ -311,15 +381,14 @@ export const deleteEvent = async ({
         where: { id: eventId },
       });
 
-      console.log("Event deleted successfully");
-
+      console.log("Event and all associated data deleted successfully");
       return deletedEvent;
     });
 
     // ✅ Revalidate the path on the server side
     revalidatePath(path);
 
-    return { success: true, message: "Event deleted successfully", path };
+    return { success: true, message: "Event and all associated coupons deleted successfully", path };
   } catch (error) {
     console.error("Error deleting event:", error);
     return {
@@ -329,18 +398,6 @@ export const deleteEvent = async ({
   }
 };
 
-// export async function deleteEvent({ eventId, path }: DeleteEventParams) {
-//   try {
-//     await db.event.delete({
-//       where: { id: eventId },
-//     });
-
-//     revalidatePath(path);
-//   } catch (error) {
-//     console.error("Error deleting event:", error);
-//     throw new Error("Failed to delete event");
-//   }
-// }
 export const deleteExpiredEvents = async () => {
   try {
     console.log("Running cleanup for expired events...");
@@ -450,6 +507,78 @@ export const updateEvent = async (
   } catch (error: any) {
     console.error("Error updating event:", error.message || error);
     throw new Error(error.message || "Failed to update event");
+  } finally {
+    await db.$disconnect();
+  }
+};
+
+export const getEventCoupons = async (eventId: string) => {
+  try {
+    return await db.coupon.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch (error) {
+    console.error('Error fetching coupons:', error);
+    throw new Error('Failed to fetch coupons');
+  }
+};
+
+// Validate coupon for checkout
+export const validateEventCoupon = async (eventId: string, code: string) => {
+  try {
+    const coupon = await db.coupon.findFirst({
+      where: {
+        eventId,
+        code,
+        isActive: true,
+        startDate: { lte: new Date() },
+        OR: [
+          { endDate: null },
+          { endDate: { gte: new Date() } },
+        ],
+      },
+    });
+
+    if (!coupon) return { valid: false, message: 'Invalid coupon code' };
+    if (coupon.maxUses && coupon.currentUses >= coupon.maxUses) {
+      return { valid: false, message: 'Coupon has reached its usage limit' };
+    }
+
+    return { valid: true, coupon };
+  } catch (error) {
+    console.error('Error validating coupon:', error);
+    throw new Error('Failed to validate coupon');
+  }
+};
+
+export const getNextUpcomingEvent = async () => {
+  try {
+    const now = new Date();
+    
+    const nextEvent = await db.event.findFirst({
+      where: {
+        startDateTime: {
+          gt: now // Only future events
+        }
+      },
+      orderBy: {
+        startDateTime: 'asc' // Get the closest upcoming event
+      },
+      include: {
+        category: true,
+        organizer: true
+      }
+    });
+
+    if (!nextEvent) {
+      throw new Error('No upcoming events found');
+    }
+
+    return nextEvent;
+  } catch (error: any) {
+    console.error("Error fetching next event:", error.message || error);
+    throw new Error(error.message || "Failed to fetch next event");
   } finally {
     await db.$disconnect();
   }

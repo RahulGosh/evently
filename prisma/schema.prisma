@@ -1,9 +1,5 @@
-
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
   provider = "prisma-client-js"
@@ -72,6 +68,7 @@ model Event {
   isFree        Boolean  @default(false)
   url           String?
   ticketsLeft   Int      @default(10)
+
   categoryId    String
   organizerId   String
   category      Category @relation(fields: [categoryId], references: [id])
@@ -79,6 +76,7 @@ model Event {
   orders        Order[]
   ticketScans   TicketScan[]
   employerEvents EmployerEvent[]
+  coupons       Coupon[] // Relation to coupons
 
   @@map("events")
 }
@@ -95,8 +93,31 @@ model Order {
   event       Event    @relation(fields: [eventId], references: [id])
   barcodeId   String?  @unique
   ticketScans TicketScan[]
+  couponId    String?  // Optional coupon ID
+  coupon      Coupon?  @relation(fields: [couponId], references: [id])
+  
+  discountAmount  String?  // Store the discount amount
 
   @@map("orders")
+}
+
+model Coupon {
+  id           String   @id @default(uuid())
+  code         String   
+  discount     Float
+  isPercentage Boolean  @default(true)
+  maxUses      Int?
+  currentUses  Int      @default(0)
+  startDate    DateTime @default(now())
+  endDate      DateTime?
+  isActive     Boolean  @default(true)
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  createdAt    DateTime @default(now())
+
+  @@unique([code, eventId])
+  @@map("coupons")
 }
 
 model TicketScan {

@@ -1,4 +1,3 @@
-import { getAllEvents } from "@/lib/actions/event.action";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -6,6 +5,8 @@ import Search from "./search";
 import CategoryFilter from "./categoryFilter";
 import Collection from "./collection";
 import { ClearFiltersButton } from "./clearFilterButton";
+import CountdownTimer from "./countdownTimer";
+import { getAllEvents, getNextUpcomingEvent } from "@/lib/actions/event.action";
 
 type HomeContentProps = {
   page: number;
@@ -14,13 +15,16 @@ type HomeContentProps = {
 };
 
 export async function HomeContent({ page, searchText, category }: HomeContentProps) {
-  const eventsData = await getAllEvents({
-    query: searchText,
-    category,
-    limit: 6,
-    page,
-  });
-  console.log(eventsData, "eventsData")
+  const [eventsData, nextEvent] = await Promise.all([
+    getAllEvents({
+      query: searchText,
+      category,
+      limit: 6,
+      page,
+    }),
+    getNextUpcomingEvent().catch(() => null) // Gracefully handle if no upcoming event
+  ]);
+
   return (
     <>
       <section className="bg-primary-50 bg-dotted-pattern bg-contain py-5 md:py-10">
@@ -47,6 +51,16 @@ export async function HomeContent({ page, searchText, category }: HomeContentPro
           />
         </div>
       </section>
+
+      {/* Add the countdown section */}
+      {nextEvent && (
+        <section className="wrapper my-8">
+          <CountdownTimer 
+            targetDate={new Date(nextEvent.startDateTime)} 
+            eventTitle={nextEvent.title}
+          />
+        </section>
+      )}
 
       <section
         id="events"

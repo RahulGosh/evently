@@ -52,7 +52,7 @@ CREATE TABLE "events" (
     "location" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "imageUrl" TEXT NOT NULL,
-    "startDateTimcloue" TIMESTAMP(3) NOT NULL,
+    "startDateTime" TIMESTAMP(3) NOT NULL,
     "endDateTime" TIMESTAMP(3) NOT NULL,
     "price" TEXT NOT NULL,
     "isFree" BOOLEAN NOT NULL DEFAULT false,

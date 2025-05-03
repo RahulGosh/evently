@@ -14,6 +14,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const scanner = await db.user.findUnique({
+      where: { id: scannerId }
+    });
+    
+    if (!scanner) {
+      return NextResponse.json(
+        { success: false, message: "Invalid scanner ID" },
+        { status: 400 }
+      );
+    }
+
     // First find the ticket (order)
     const ticket = await db.order.findUnique({
       where: { 

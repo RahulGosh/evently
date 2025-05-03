@@ -14,7 +14,7 @@ const Header = () => {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
+ 
   const handleLogout = async () => {
     setLoading(true);
     await signOut();

@@ -29,6 +29,7 @@ export type CreateEventParams = {
     price: string;
     isFree: boolean;
     url: string;
+    ticketsLeft: number;
   };
   path: string;
 };
@@ -103,25 +104,6 @@ export type CreateCategoryParams = {
   categoryName: string;
 };
 
-// ====== ORDER PARAMS
-export type CheckoutOrderParams = {
-  eventTitle: string;
-  eventId: string;
-  price: number;
-  isFree: boolean;
-  buyerId: string;
-  quantity: number; // Add this line
-};
-
-export type CreateOrderParams = {
-  stripeId: string;
-  eventId: string;
-  buyerId: string;
-  totalAmount: string;
-  createdAt: Date;
-  quantity: number;
-};
-
 export type GetOrdersByEventParams = {
   eventId: string;
   searchString?: string;
@@ -193,3 +175,107 @@ export const RegisterSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
+
+export const HostApplicationSchema = z.object({
+  organizationName: z.string().optional(),
+  websiteUrl: z.string().url().optional(),
+  instagramUrl: z.string().url().optional(),
+  facebookUrl: z.string().url().optional(),
+  linkedinUrl: z.string().url().optional(),
+  governmentIdUrl: z.string().url().optional(),
+  pastEvents: z.string().optional(),
+  whyHosting: z.string(),
+  expectedAudience: z.string().optional(),
+  eventType: z.string().optional(),
+});
+
+export type CheckoutOrderParams = {
+  eventId: string;
+  eventTitle: string;
+  price: string; // Base price as string (e.g., "100.00")
+  isFree: boolean;
+  buyerId: string;
+  quantity: number;
+  // Coupon and Discount Fields
+  code?: string; // Optional coupon code
+  discountAmount?: string; // Applied discount amount
+  // Early Bird Tracking
+  isEarlyBird?: boolean; // Whether early bird discount was applied
+  earlyBirdDiscount?: string; // Early bird discount amount if applied
+};
+
+export type CreateOrderParams = {
+  stripeId: string;
+  eventId: string;
+  buyerId: string;
+  totalAmount: string; // Final amount after all discounts
+  quantity: number;
+  // Discount Tracking Fields
+  discountAmount?: string; // Total discount applied
+  couponId?: string; // ID of applied coupon (if any)
+  isEarlyBird?: boolean; // Whether early bird discount was applied
+  earlyBirdDiscount?: string; // Early bird discount amount if applied
+  barcodeId?: string; // Optional barcode/ticket ID
+};
+
+// New coupon-related types
+export type Coupon = {
+  id: string;
+  code: string;
+  discount: number;
+  isPercentage: boolean;
+  maxUses?: number | null;
+  currentUses: number;
+  startDate: Date;
+  endDate?: Date | null;
+  isActive: boolean;
+  eventId: string;
+};
+
+export type CreateCouponParams = {
+  code: string;
+  discount: number;
+  isPercentage: boolean;
+  maxUses?: number | null;
+  startDate?: Date;
+  endDate?: Date | null;
+  eventId: string;
+};
+
+export type ValidateCouponResult = {
+  valid: boolean;
+  message: string;
+  coupon: Coupon | null;
+};
+
+export type ApplyCouponResult = {
+  valid: boolean;
+  message: string;
+  originalPrice: string;
+  discountedPrice: string;
+  discountAmount: string;
+  couponId: string | null;
+};
+
+// Extended types with coupon support
+export type CheckoutOrderWithCouponParams = CheckoutOrderParams & {
+  code?: string;
+};
+
+export type CreateOrderWithCouponParams = CreateOrderParams & {
+  couponId?: string;
+  discountAmount?: string;
+};
+
+export type OrderWithCoupon = {
+  id: string;
+  stripeId: string;
+  totalAmount: string;
+  discountAmount?: string;
+  eventId: string;
+  buyerId: string;
+  quantity: number;
+  createdAt: Date;
+  couponId?: string;
+  coupon?: Coupon;
+};
