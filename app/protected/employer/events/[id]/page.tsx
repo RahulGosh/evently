@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, CheckCircle, AlertCircle, RefreshCw, ImageIcon } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, RefreshCw, ImageIcon, Key, Scan } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getScannedTickets, scanTicket } from "@/lib/actions/ticket.action";
 import { Html5Qrcode } from "html5-qrcode";
@@ -517,258 +517,290 @@ useEffect(() => {
 }, []);
 
 return (
-  <div className="container mx-auto p-4 max-w-3xl">
-    <h1 className="text-2xl font-bold mb-6">Ticket Scanner - Event #{eventId}</h1>
-    
-    {/* Camera permission status indicator */}
-    <div className={`mb-4 p-3 rounded-lg ${
-  cameraPermissionStatus === "granted" 
-    ? "bg-green-100 text-green-800" 
-    : cameraPermissionStatus === "denied"
-    ? "bg-red-100 text-red-800"
-    : "bg-yellow-100 text-yellow-800"
-}`}>
-  <div className="flex items-center gap-2">
-    {cameraPermissionStatus === "granted" ? (
-      <CheckCircle size={18} />
-    ) : cameraPermissionStatus === "denied" ? (
-      <AlertCircle size={18} />
-    ) : (
-      <RefreshCw size={18} />
-    )}
-    <span>
-      Camera permission: {cameraPermissionStatus === "granted" 
-        ? "Granted" 
-        : cameraPermissionStatus === "denied"
-        ? "Denied" 
-        : "Not requested"}
-    </span>
-  </div>
-  
-  {cameraPermissionStatus !== "granted" && (
-    <>
-      <button
-        onClick={requestCameraPermission}
-        className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-      >
-        Grant camera permission
-      </button>
-      
-      {isMobileDevice() && cameraPermissionStatus === "denied" && (
-        <div className="mt-2 text-sm">
-          <p>If you're having trouble with camera permissions:</p>
-          <ol className="list-decimal pl-5 mt-1">
-            <li>Go to your browser settings</li>
-            <li>Find site settings or permissions</li>
-            <li>Look for camera permissions</li>
-            <li>Find this website and allow camera access</li>
-            <li>Refresh this page</li>
-          </ol>
-          <button
-            onClick={handleAlternativeCameraCapture}
-            className="mt-2 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-          >
-            Try Alternative Camera Method
-          </button>
-        </div>
-      )}
-    </>
-  )}
-</div>
-    
-    {/* Camera View */}
-    <div className="mb-8 bg-gray-100 rounded-lg overflow-hidden">
-      <div className="relative aspect-video bg-black">
-        <div 
-          id="qr-scanner-container" 
-          ref={scannerContainerRef} 
-          className="w-full h-full" 
-        />
-        
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-gray-500">Use Take Photo or Upload Barcode to scan tickets</p>
-        </div>
-      </div>
-      
-      {/* Camera Controls */}
-      <div className="p-4 flex justify-center items-center gap-4">
-        <button
-          onClick={handleCameraCapture}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md flex items-center gap-2 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isScanning || cameraPermissionStatus === "denied"}
-        >
-          <ImageIcon size={18} />
-          Take Photo
-        </button>
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
+      {/* Main Container */}
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+        <header className="mb-6">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            Event Ticket Scanner
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Scan and validate tickets for Event #{eventId}
+          </p>
+        </header>
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 bg-green-600 text-white rounded-md flex items-center gap-2 hover:bg-green-700 disabled:opacity-50"
-          disabled={isScanning}
-        >
-          <Upload size={18} />
-          Upload Barcode
-        </button>
-        
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileUpload}
-          accept="image/*"
-          className="hidden"
-        />
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+          {/* Left Column - Scanner Section */}
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            {/* Scanner Card Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-4 sm:p-5 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                  <Scan size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Ticket Scanner
+                </h2>
+                <span className="text-xs sm:text-sm bg-white/20 px-2 sm:px-3 py-1 rounded-full">
+                  {cameraPermissionStatus === "granted" ? "Ready" : "Setup Required"}
+                </span>
+              </div>
+            </div>
 
-        <input
-          type="file"
-          ref={captureInputRef}
-          onChange={handleCapturedImage}
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-        />
-      </div>
-    </div>
-    
-    {/* Manual Ticket Entry */}
-    <div className="mb-8 bg-white p-4 rounded-lg shadow">
-      <h2 className="text-lg font-semibold mb-3">Manual Ticket Entry</h2>
-      <form onSubmit={handleManualSubmit} className="flex gap-2">
-        <input
-          type="text"
-          value={manualTicketId}
-          onChange={(e) => setManualTicketId(e.target.value)}
-          placeholder="Enter ticket ID..."
-          className="flex-1 px-3 py-2 border rounded-md"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          disabled={!manualTicketId.trim() || isScanning}
-        >
-          Validate
-        </button>
-      </form>
-    </div>
-    
-    {/* Scan Result */}
-    {scanResult && (
-      <div className={`mb-8 p-4 rounded-lg ${
-        scanResult.success ? "bg-green-100" : "bg-red-100"
-      }`}>
-        <div className="flex items-start gap-3">
-          {scanResult.success ? (
-            <CheckCircle className="text-green-600" />
-          ) : (
-            <AlertCircle className="text-red-600" />
-          )}
-          <div>
-            <h3 className="font-semibold">
-              {scanResult.success ? "Success" : "Error"}
-            </h3>
-            <p>{scanResult.message}</p>
-            {scanResult.ticketId && (
-              <p className="text-sm text-gray-600 mt-1">
-                Ticket ID: {scanResult.ticketId}
-              </p>
+            {/* Camera Status Panel */}
+            <div className={`p-4 border-b ${
+              cameraPermissionStatus === "granted" 
+                ? "bg-green-50 text-green-800" 
+                : cameraPermissionStatus === "denied"
+                ? "bg-red-50 text-red-800"
+                : "bg-yellow-50 text-yellow-800"
+            }`}>
+              <div className="flex items-center gap-3">
+                {cameraPermissionStatus === "granted" ? (
+                  <CheckCircle size={20} className="flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
+                ) : cameraPermissionStatus === "denied" ? (
+                  <AlertCircle size={20} className="flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
+                ) : (
+                  <RefreshCw size={20} className="flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                )}
+                <div>
+                  <p className="text-sm sm:text-base font-medium">
+                    {cameraPermissionStatus === "granted" 
+                      ? "Camera Ready" 
+                      : cameraPermissionStatus === "denied"
+                      ? "Camera Blocked" 
+                      : "Camera Access Needed"}
+                  </p>
+                  <p className="text-xs sm:text-sm">
+                    {cameraPermissionStatus === "granted" 
+                      ? "You can now scan tickets" 
+                      : "Please allow camera access to scan tickets"}
+                  </p>
+                </div>
+              </div>
+
+              {cameraPermissionStatus !== "granted" && (
+                <div className="mt-3">
+                  <button
+                    onClick={requestCameraPermission}
+                    className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm"
+                  >
+                    <RefreshCw size={14} className="mr-1 sm:mr-2 w-3 h-3 sm:w-4 sm:h-4" />
+                    Grant Permission
+                  </button>
+
+                  {isMobileDevice() && cameraPermissionStatus === "denied" && (
+                    <div className="mt-3 text-xs sm:text-sm bg-white/50 p-2 sm:p-3 rounded-lg">
+                      <p className="font-medium mb-1">Mobile Camera Help:</p>
+                      <ol className="list-decimal pl-4 space-y-1">
+                        <li>Open browser settings</li>
+                        <li>Find site permissions</li>
+                        <li>Allow camera access</li>
+                        <li>Refresh this page</li>
+                      </ol>
+                      <button
+                        onClick={handleAlternativeCameraCapture}
+                        className="mt-2 inline-flex items-center px-2 sm:px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs sm:text-sm"
+                      >
+                        Try Alternative Method
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Scanner View */}
+            <div className="p-4 sm:p-5">
+              <div className="aspect-video bg-gray-200 rounded-xl overflow-hidden relative border-2 border-dashed border-gray-300">
+                <div 
+                  id="qr-scanner-container" 
+                  ref={scannerContainerRef} 
+                  className="w-full h-full"
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                  <Scan size={36} className="text-gray-400 mb-2 w-8 h-8 sm:w-10 sm:h-10" />
+                  <p className="text-xs sm:text-sm md:text-base text-gray-500 font-medium">
+                    Use camera or upload to scan tickets
+                  </p>
+                </div>
+              </div>
+
+              {/* Scanner Controls */}
+              <div className="grid grid-cols-2 gap-3 mt-4 sm:mt-5">
+                <button
+                  onClick={handleCameraCapture}
+                  disabled={isScanning || cameraPermissionStatus === "denied"}
+                  className={`flex items-center justify-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl transition-all text-xs sm:text-sm ${
+                    isScanning || cameraPermissionStatus === "denied"
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-purple-600 text-white hover:bg-purple-700"
+                  }`}
+                >
+                  <ImageIcon size={16} className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span>Take Photo</span>
+                </button>
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isScanning}
+                  className={`flex items-center justify-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl transition-all text-xs sm:text-sm ${
+                    isScanning
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
+                  }`}
+                >
+                  <Upload size={16} className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span>Upload Image</span>
+                </button>
+                
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                <input
+                  type="file"
+                  ref={captureInputRef}
+                  onChange={handleCapturedImage}
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* Manual Entry */}
+            <div className="p-4 sm:p-5 border-t">
+              <h3 className="flex items-center gap-2 text-base sm:text-lg font-medium text-gray-700 mb-3">
+                <Key size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
+                Manual Entry
+              </h3>
+              <form onSubmit={handleManualSubmit} className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualTicketId}
+                  onChange={(e) => setManualTicketId(e.target.value)}
+                  placeholder="Enter ticket ID..."
+                  className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm sm:text-base"
+                />
+                <button
+                  type="submit"
+                  disabled={!manualTicketId.trim() || isScanning}
+                  className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm ${
+                    !manualTicketId.trim() || isScanning
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-green-600 text-white hover:bg-green-700"
+                  }`}
+                >
+                  Validate
+                </button>
+              </form>
+            </div>
+
+            {/* Scan Result */}
+            {scanResult && (
+              <div className={`p-4 border-t ${
+                scanResult.success 
+                  ? "bg-green-50 text-green-800" 
+                  : "bg-red-50 text-red-800"
+              }`}>
+                <div className="flex items-start gap-3">
+                  {scanResult.success ? (
+                    <CheckCircle size={20} className="mt-0.5 flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
+                  ) : (
+                    <AlertCircle size={20} className="mt-0.5 flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
+                  )}
+                  <div>
+                    <h3 className="text-sm sm:text-base font-semibold">
+                      {scanResult.success ? "Validation Successful" : "Validation Failed"}
+                    </h3>
+                    <p className="text-xs sm:text-sm">{scanResult.message}</p>
+                    {scanResult.ticketId && (
+                      <p className="text-xs sm:text-sm mt-1 opacity-80">
+                        Ticket ID: <span className="font-mono">{scanResult.ticketId}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - History and Tickets */}
+          <div className="space-y-4 sm:space-y-6">
+            {/* Recent Scans Card */}
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              <div className="bg-gradient-to-r from-gray-800 to-gray-700 p-4 sm:p-5 text-white">
+                <h2 className="text-lg sm:text-xl font-semibold">Recent Scans</h2>
+              </div>
+              <div className="divide-y">
+                {scanHistory.length > 0 ? (
+                  scanHistory.map((scan, index) => (
+                    <div key={index} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start gap-3">
+                        {scan.success ? (
+                          <CheckCircle className="text-green-500 mt-0.5 flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
+                        ) : (
+                          <AlertCircle className="text-red-500 mt-0.5 flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5" />
+                        )}
+                        <div className="flex-1">
+                          <div className="flex justify-between items-baseline">
+                            <p className="text-sm sm:text-base font-medium text-gray-800">{scan.ticketId}</p>
+                            <span className="text-[10px] xs:text-xs text-gray-500">
+                              {scan.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-gray-600">{scan.message}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 sm:p-6 text-center text-gray-500">
+                    <p className="text-sm sm:text-base">No scans recorded yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Valid Tickets Card */}
+            {validTickets.length > 0 ? (
+              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 sm:p-5 text-white">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg sm:text-xl font-semibold">Valid Tickets</h2>
+                    <span className="text-xs sm:text-sm bg-white/20 px-2 sm:px-3 py-1 rounded-full">
+                      {validTickets.length} verified
+                    </span>
+                  </div>
+                </div>
+                <ScannedTicketsList
+                  scannedTickets={validTickets}
+                  h2ScannedText="Valid Tickets"
+                  length={validTickets.length}
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                />
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-800 to-gray-700 p-4 sm:p-5 text-white">
+                  <h2 className="text-lg sm:text-xl font-semibold">Valid Tickets</h2>
+                </div>
+                <div className="p-4 sm:p-6 text-center text-gray-500">
+                  <p className="text-sm sm:text-base">No valid tickets found yet</p>
+                </div>
+              </div>
             )}
           </div>
         </div>
       </div>
-    )}
-    
-    {/* Recent Scans */}
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="p-4 bg-gray-50 border-b">
-        <h2 className="text-lg font-semibold">Recent Scans</h2>
-      </div>
-      <div className="divide-y">
-        {scanHistory.length > 0 ? (
-          scanHistory.map((scan, index) => (
-            <div key={index} className="p-4 flex items-start gap-3">
-              {scan.success ? (
-                <CheckCircle className="text-green-600 mt-1" size={18} />
-              ) : (
-                <AlertCircle className="text-red-600 mt-1" size={18} />
-              )}
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{scan.ticketId}</p>
-                  <span className="text-xs text-gray-500">
-                    {scan.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">{scan.message}</p>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="p-4 text-center text-gray-500">No scans yet</div>
-        )}
-      </div>
     </div>
-
-    {/* Scanned Tickets List */}
-    {/* {scannedTickets.length > 0 && (
-      <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
-        <div className="p-4 bg-gray-50 border-b">
-          <h2 className="text-lg font-semibold">
-            Total Scanned Tickets ({scannedTickets.length}) - Valid Tickets (
-            {scannedTickets.filter((ticket) => ticket.isValid).length})
-          </h2>
-        </div>
-        <ScannedTicketsList
-            scannedTickets={scannedTickets}
-            h2ScannedText="Total Tickets Scanned"
-          length={scannedTickets.length}
-          page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-        />
-      </div>
-    )} */}
-
-{/* {scannedTickets.length > 0 && (
-        <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
-          <div className="p-4 bg-gray-50 border-b">
-            <h2 className="text-lg font-semibold">
-              Total Scanned Tickets ({scannedTickets.length}) - Valid Tickets ({validTickets.length})
-            </h2>
-          </div>
-          <ScannedTicketsList
-            scannedTickets={scannedTickets}
-            h2ScannedText="Total Tickets Scanned"
-            length={scannedTickets.length}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
-        </div>
-      )} */}
-
-      {/* ✅ Show only valid tickets */}
-      {validTickets.length > 0 ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
-          <div className="p-4 bg-gray-50 border-b">
-            <h2 className="text-lg font-semibold">
-              Valid Scanned Tickets ({validTickets.length})
-            </h2>
-          </div>
-          <ScannedTicketsList
-            scannedTickets={validTickets}
-            h2ScannedText="Valid Tickets"
-            length={validTickets.length}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
-        </div>
-      ) : (
-        // ✅ Handle empty valid tickets separately
-        <div className="mt-8 text-center text-gray-500">
-          <p>No valid tickets found</p>
-        </div>
-      )}
-  </div>
 );
 };
 

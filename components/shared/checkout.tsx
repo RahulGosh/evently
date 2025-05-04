@@ -68,7 +68,16 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
         price: event.price,
         quantity: quantity
       });
-
+      console.log('Coupon Application Result:', {
+        valid: result.valid,
+        message: result.message,
+        couponId: result.couponId,
+        discountAmount: result.discountAmount,
+        originalPrice: result.originalPrice,
+        discountedPrice: result.discountedPrice
+      });
+      
+      console.log(result , "result")
       if (result.valid) {
         setDiscountAmount(Number(result.discountAmount));
         setCouponApplied(true);

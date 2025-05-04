@@ -73,7 +73,7 @@ export async function HomeContent({ page, searchText, category }: HomeContentPro
         <form action="/" method="GET" className="flex w-full flex-col gap-5 md:flex-row items-center">
           <Search />
           <CategoryFilter />
-          <ClearFiltersButton />
+          {/* <ClearFiltersButton /> */}
         </form>
 
         <Collection

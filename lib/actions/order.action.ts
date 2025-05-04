@@ -21,8 +21,12 @@ export type CreateOrderWithCouponParams = CreateOrderParams & {
 
 export const checkoutOrder = async (order: CheckoutOrderWithCouponParams) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  console.log('Starting checkout process for order:', {
+    eventId: order.eventId,
+    quantity: order.quantity,
+    couponCode: order?.code || 'none'
+  });
 
-  // Base price per ticket in paise
   const basePrice = order.isFree ? 0 : Number(order.price) * 100;
   let totalAmount = basePrice * order.quantity;
   let couponId = null;
@@ -30,9 +34,22 @@ export const checkoutOrder = async (order: CheckoutOrderWithCouponParams) => {
   
   if (order?.code) {
     try {
+      console.log('Validating coupon:', order.code);
       const couponResult = await validateCoupon({
-        code: order?.code,
+        code: order.code,
         eventId: order.eventId,
+      });
+
+      console.log('Coupon validation result:', {
+        valid: couponResult.valid,
+        message: couponResult.message,
+        coupon: couponResult.coupon ? {
+          id: couponResult.coupon.id,
+          code: couponResult.coupon.code,
+          isActive: couponResult.coupon.isActive,
+          startDate: couponResult.coupon.startDate,
+          endDate: couponResult.coupon.endDate
+        } : null
       });
 
       if (couponResult.valid && couponResult.coupon) {
@@ -42,30 +59,47 @@ export const checkoutOrder = async (order: CheckoutOrderWithCouponParams) => {
         // Calculate total discount
         const totalDiscount = coupon.isPercentage
           ? Math.round((totalBeforeDiscount * coupon.discount) / 100)
-          : Math.min(coupon.discount * 100, totalBeforeDiscount); // Convert to paise
+          : Math.min(coupon.discount * 100, totalBeforeDiscount);
         
         // Calculate final total
         totalAmount = Math.max(totalBeforeDiscount - totalDiscount, 0);
         discountAmount = (totalDiscount / 100).toString();
         couponId = coupon.id;
+
+        console.log('Coupon applied successfully:', {
+          originalAmount: (totalBeforeDiscount / 100).toFixed(2),
+          discountAmount: (totalDiscount / 100).toFixed(2),
+          finalAmount: (totalAmount / 100).toFixed(2),
+          couponId
+        });
+      } else {
+        console.warn('Coupon validation failed:', couponResult.message);
       }
     } catch (error) {
-      console.error("Error applying coupon:", error);
+      console.error("Detailed coupon application error:", {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   }
 
   try {
-    // Create a single line item with the final total amount
+    console.log('Creating Stripe checkout session with:', {
+      totalAmount: totalAmount / 100,
+      quantity: order.quantity,
+      couponApplied: couponId !== null
+    });
+
     const session = await stripe.checkout.sessions.create({
       line_items: [{
         price_data: {
           currency: "inr",
-          unit_amount: totalAmount, // Total amount for all tickets
+          unit_amount: totalAmount,
           product_data: {
             name: `${order.quantity} x ${order.eventTitle}`,
           },
         },
-        quantity: 1, // Always quantity 1 since we've calculated the total
+        quantity: 1,
       }],
       metadata: {
         eventId: order.eventId,
@@ -75,12 +109,22 @@ export const checkoutOrder = async (order: CheckoutOrderWithCouponParams) => {
         discountAmount: discountAmount,
       },
       mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/protected/profile`,
+      success_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/protected/order-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/`,
     });
     
+    console.log('Checkout session created:', session.id);
     return { url: session.url };
   } catch (error) {
+    console.error("Checkout session creation failed:", {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      orderDetails: {
+        eventId: order.eventId,
+        buyerId: order.buyerId,
+        amount: totalAmount / 100
+      }
+    });
     throw error;
   }
 };
@@ -248,5 +292,94 @@ export async function getOrdersByEvent({ searchString, eventId, sort = "desc" }:
   } catch (error) {
     console.error("Error fetching orders by event:", error);
     throw error;
+  }
+}
+
+export async function verifyOrder(session_id: string) {
+  if (!session_id) {
+    return { success: false, message: "Session ID is required" };
+  }
+
+  try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+    const session = await stripe.checkout.sessions.retrieve(
+      session_id,
+      { expand: ["payment_intent", "line_items"] }
+    );
+
+    // Check payment status
+    if (session.payment_status !== "paid") {
+      return { 
+        success: false,
+        message: "Payment was not successful",
+        sessionId: session.id,
+        amount: session.amount_total ? session.amount_total / 100 : 0
+      };
+    }
+
+    // Get the amount from line items if available
+    const amount = session.amount_total 
+      ? session.amount_total / 100 
+      : session.line_items?.data[0]?.amount_total 
+        ? session.line_items.data[0].amount_total / 100 
+        : 0;
+
+    // Try to find existing order
+    const order = await db.order.findFirst({
+      where: { stripeId: session.id },
+      include: {
+        event: {
+          include: {
+            organizer: { select: { name: true, id: true } },
+          },
+        },
+        coupon: { select: { code: true, discount: true, isPercentage: true } },
+      },
+    });
+
+    if (order) {
+      return { 
+        success: true,
+        order,
+        sessionId: session.id,
+        amount
+      };
+    }
+
+    // If no order exists but payment is successful, create one
+    if (session.payment_status === "paid") {
+      const newOrder = await createOrder({
+        stripeId: session.id,
+        eventId: session?.metadata.eventId,
+        buyerId: session?.metadata.buyerId,
+        totalAmount: amount.toString(),
+        quantity: parseInt(session?.metadata.quantity),
+        couponId: session?.metadata.couponId || undefined,
+        discountAmount: session?.metadata.discountAmount || "0",
+      });
+
+      return {
+        success: true,
+        order: newOrder,
+        sessionId: session.id,
+        amount
+      };
+    }
+
+    return { 
+      success: true,
+      session,
+      sessionId: session.id,
+      amount
+    };
+
+  } catch (error: any) {
+    console.error("Error verifying order:", error);
+    return { 
+      success: false,
+      message: "Failed to verify order", 
+      error: error.message 
+    };
   }
 }

@@ -41,10 +41,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CreateEventParams } from "@/types";
-import {
-  removeEarlyBirdDiscount,
-  setEarlyBirdDiscount,
-} from "@/lib/actions/earlyBird.action";
 
 type EventFormProps = {
   type: "Create" | "Update";

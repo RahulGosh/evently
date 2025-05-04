@@ -52,13 +52,15 @@ export const createCoupon = async (coupon: CreateCouponParams) => {
     // Create the coupon
     const newCoupon = await db.coupon.create({
       data: {
-        code: coupon.code,
+        code: coupon.code.toUpperCase().trim(),
         discount: coupon.discount,
         isPercentage: coupon.isPercentage,
         maxUses: coupon.maxUses,
-        startDate: coupon.startDate || new Date(),
+        startDate: coupon.startDate || new Date(), // Default to now if not provided
         endDate: coupon.endDate,
         eventId: coupon.eventId,
+        isActive: true, // Explicitly set to active
+        currentUses: 0,  // Explicit default
       },
     });
 
@@ -92,66 +94,115 @@ export const getCouponsByEvent = async (eventId: string) => {
 
 // Validate a coupon code for an event
 export const validateCoupon = async ({ code, eventId }: ValidateCouponParams) => {
-    try {
-      // Normalize the coupon code (trim whitespace and convert to uppercase)
-      const normalizedCode = code.trim().toUpperCase();
-      const now = new Date();
+  const normalizedCode = code.trim().toUpperCase();
+  const now = new Date();
   
-      const coupon = await db.coupon.findFirst({
+  console.log('=== VALIDATION PARAMETERS ===', {
+    normalizedCode,
+    eventId,
+    currentTime: now.toISOString()
+  });
+
+  try {
+    const coupon = await db.coupon.findFirst({
+      where: {
+        code: normalizedCode,
+        eventId,
+        isActive: true,
+        startDate: { lte: now },
+        OR: [
+          { endDate: null },
+          { endDate: { gte: now } }
+        ]
+      },
+    });
+
+    if (!coupon) {
+      // Debug why not found
+      const inactiveCoupon = await db.coupon.findFirst({
+        where: {
+          code: normalizedCode,
+          eventId,
+          isActive: false
+        }
+      });
+
+      const dateIssueCoupon = await db.coupon.findFirst({
         where: {
           code: normalizedCode,
           eventId,
           isActive: true,
-          startDate: {
-            lte: now, // Coupon must have started
-          },
           OR: [
-            { endDate: null }, // Coupons with no end date never expire
-            { endDate: { gte: now } } // Coupons with end date must be in the future
+            { startDate: { gt: now } },
+            { endDate: { lt: now } }
           ]
-        },
-      });
-  
-      if (!coupon) {
-        console.log(`Coupon validation failed for code: ${normalizedCode}`);
-        return {
-          valid: false,
-          message: "Invalid coupon code or expired",
-          coupon: null,
-        };
-      }
-  
-      console.log('Validating coupon:', {
-        inputCode: code,
-        normalizedCode: normalizedCode,
-        eventId,
-        now,
-        foundCoupon: coupon
+        }
       });
 
-      // Check usage limits
-      if (coupon.maxUses !== null && coupon.currentUses >= coupon.maxUses) {
-        return {
-          valid: false,
-          message: "Coupon has reached its usage limit",
-          coupon: null,
-        };
-      }
-  
-      return {
-        valid: true,
-        message: "Coupon code is valid",
-        coupon,
-      };
-    } catch (error: any) {
-      console.error("Error validating coupon:", error);
+      console.log('=== VALIDATION FAILURE REASON ===', {
+        couponExists: !!inactiveCoupon || !!dateIssueCoupon,
+        isActive: inactiveCoupon?.isActive,
+        startDate: dateIssueCoupon?.startDate?.toISOString(),
+        endDate: dateIssueCoupon?.endDate?.toISOString(),
+        currentTime: now.toISOString()
+      });
+
       return {
         valid: false,
-        message: "Error validating coupon",
+        message: "Invalid coupon code or expired",
         coupon: null,
       };
     }
-  };
+
+    // Check usage limits
+    if (coupon.maxUses !== null && coupon.currentUses >= coupon.maxUses) {
+      console.log('Usage limit reached:', {
+        currentUses: coupon.currentUses,
+        maxUses: coupon.maxUses
+      });
+      return {
+        valid: false,
+        message: "Coupon has reached its usage limit",
+        coupon: null,
+      };
+    }
+
+    console.log('=== COUPON VALIDATION DETAILS ===', {
+      normalizedCode,
+      eventId,
+      currentTime: now.toISOString(),
+      foundCoupon: coupon ? {
+        id: coupon.id,
+        code: coupon.code,
+        isActive: coupon.isActive,
+        startDate: coupon.startDate.toISOString(),
+        endDate: coupon.endDate?.toISOString() || null,
+        maxUses: coupon.maxUses,
+        currentUses: coupon.currentUses,
+        eventId: coupon.eventId
+      } : null
+    });
+
+    console.log('=== VALIDATION SUCCESS ===', {
+      couponCode: coupon.code,
+      discount: coupon.discount,
+      isPercentage: coupon.isPercentage
+    });
+
+    return {
+      valid: true,
+      message: "Coupon code is valid",
+      coupon,
+    };
+  } catch (error: any) {
+    console.error("VALIDATION ERROR:", error);
+    return {
+      valid: false,
+      message: "Error validating coupon",
+      coupon: null,
+    };
+  }
+};
 
 // Calculate final price after applying coupon
 // Calculate final price after applying coupon
@@ -198,7 +249,7 @@ export const applyCoupon = async ({ code, eventId, price, quantity }: ApplyCoupo
       discountedPrice: totalDiscountedPrice.toFixed(2),
       discountAmount: totalDiscountAmount.toFixed(2),
       discountedPricePerTicket: discountedPricePerTicket.toFixed(2),
-      couponId: coupon.id,
+      couponId: coupon?.id,
     };
   } catch (error: any) {
     console.error("Error applying coupon:", error.message || error);
