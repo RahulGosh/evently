@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { db } from "@/lib/db";
 
-export async function GET(request) {
+export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const session_id = searchParams.get("session_id");
 
@@ -15,7 +15,7 @@ export async function GET(request) {
 
   try {
     // Initialize Stripe
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
     // Retrieve the Stripe session
     const session = await stripe.checkout.sessions.retrieve(
@@ -76,7 +76,7 @@ export async function GET(request) {
       success: true,
       session
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error verifying order:", error);
     return NextResponse.json(
       { success: false, message: "Failed to verify order", error: error.message },
