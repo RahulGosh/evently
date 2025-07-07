@@ -53,11 +53,13 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
   };
 
   const handleApplyCoupon = async () => {
+    console.log('Applying coupon:', couponCode);
+    
     if (!couponCode.trim()) {
       setError("Please enter a coupon code");
       return;
     }
-
+  
     setIsApplyingCoupon(true);
     setError(null);
     
@@ -68,16 +70,9 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
         price: event.price,
         quantity: quantity
       });
-      console.log('Coupon Application Result:', {
-        valid: result.valid,
-        message: result.message,
-        couponId: result.couponId,
-        discountAmount: result.discountAmount,
-        originalPrice: result.originalPrice,
-        discountedPrice: result.discountedPrice
-      });
       
-      console.log(result , "result")
+      console.log('Full coupon result:', JSON.stringify(result, null, 2));
+      
       if (result.valid) {
         setDiscountAmount(Number(result.discountAmount));
         setCouponApplied(true);
@@ -86,7 +81,10 @@ const Checkout = ({ event, userId }: { event: Event; userId?: string }) => {
         setError(result.message || "Invalid coupon code");
       }
     } catch (error) {
-      console.error("Coupon application error:", error);
+      console.error("Detailed coupon error:", {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       resetCoupon();
       setError("Failed to apply coupon. Please try again.");
     } finally {

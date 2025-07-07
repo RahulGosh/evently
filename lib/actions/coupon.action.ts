@@ -52,15 +52,15 @@ export const createCoupon = async (coupon: CreateCouponParams) => {
     // Create the coupon
     const newCoupon = await db.coupon.create({
       data: {
-        code: coupon.code.toUpperCase().trim(),
+        code: coupon.code.toUpperCase().trim(), // Normalize case
         discount: coupon.discount,
         isPercentage: coupon.isPercentage,
         maxUses: coupon.maxUses,
-        startDate: coupon.startDate || new Date(), // Default to now if not provided
+        startDate: coupon.startDate || new Date(),
         endDate: coupon.endDate,
         eventId: coupon.eventId,
         isActive: true, // Explicitly set to active
-        currentUses: 0,  // Explicit default
+        currentUses: 0, // Explicit default
       },
     });
 
@@ -104,98 +104,63 @@ export const validateCoupon = async ({ code, eventId }: ValidateCouponParams) =>
   });
 
   try {
+    // First check if coupon exists at all
     const coupon = await db.coupon.findFirst({
       where: {
         code: normalizedCode,
         eventId,
-        isActive: true,
-        startDate: { lte: now },
-        OR: [
-          { endDate: null },
-          { endDate: { gte: now } }
-        ]
       },
     });
 
     if (!coupon) {
-      // Debug why not found
-      const inactiveCoupon = await db.coupon.findFirst({
-        where: {
-          code: normalizedCode,
-          eventId,
-          isActive: false
-        }
-      });
-
-      const dateIssueCoupon = await db.coupon.findFirst({
-        where: {
-          code: normalizedCode,
-          eventId,
-          isActive: true,
-          OR: [
-            { startDate: { gt: now } },
-            { endDate: { lt: now } }
-          ]
-        }
-      });
-
-      console.log('=== VALIDATION FAILURE REASON ===', {
-        couponExists: !!inactiveCoupon || !!dateIssueCoupon,
-        isActive: inactiveCoupon?.isActive,
-        startDate: dateIssueCoupon?.startDate?.toISOString(),
-        endDate: dateIssueCoupon?.endDate?.toISOString(),
-        currentTime: now.toISOString()
-      });
-
+      console.log('Coupon not found in database');
       return {
         valid: false,
-        message: "Invalid coupon code or expired",
+        message: "Coupon code not found",
         coupon: null,
       };
     }
 
-    // Check usage limits
-    if (coupon.maxUses !== null && coupon.currentUses >= coupon.maxUses) {
-      console.log('Usage limit reached:', {
-        currentUses: coupon.currentUses,
-        maxUses: coupon.maxUses
-      });
-      return {
-        valid: false,
-        message: "Coupon has reached its usage limit",
-        coupon: null,
-      };
-    }
+    // Then check all validation conditions
+    const isValid = 
+      coupon.isActive &&
+      coupon.startDate <= now &&
+      (coupon.endDate === null || coupon.endDate >= now) &&
+      (coupon.maxUses === null || coupon.currentUses < coupon.maxUses);
 
-    console.log('=== COUPON VALIDATION DETAILS ===', {
-      normalizedCode,
-      eventId,
-      currentTime: now.toISOString(),
-      foundCoupon: coupon ? {
-        id: coupon.id,
-        code: coupon.code,
+    if (!isValid) {
+      console.log('Coupon validation failed:', {
         isActive: coupon.isActive,
-        startDate: coupon.startDate.toISOString(),
-        endDate: coupon.endDate?.toISOString() || null,
+        startDate: coupon.startDate,
+        endDate: coupon.endDate,
+        currentTime: now,
         maxUses: coupon.maxUses,
-        currentUses: coupon.currentUses,
-        eventId: coupon.eventId
-      } : null
-    });
+        currentUses: coupon.currentUses
+      });
 
-    console.log('=== VALIDATION SUCCESS ===', {
-      couponCode: coupon.code,
-      discount: coupon.discount,
-      isPercentage: coupon.isPercentage
-    });
+      let message = "Coupon is not valid";
+      if (!coupon.isActive) message = "Coupon is inactive";
+      else if (coupon.startDate > now) message = "Coupon not yet started";
+      else if (coupon.endDate && coupon.endDate < now) message = "Coupon has expired";
+      else if (coupon.maxUses !== null && coupon.currentUses >= coupon.maxUses) {
+        message = "Coupon usage limit reached";
+      }
 
+      return {
+        valid: false,
+        message,
+        coupon: null,
+      };
+    }
+
+    console.log('Coupon validation successful:', coupon);
     return {
       valid: true,
-      message: "Coupon code is valid",
+      message: "Coupon is valid",
       coupon,
     };
   } catch (error: any) {
-    console.error("VALIDATION ERROR:", error);
+    console.error("Coupon validation error:", error);
     return {
       valid: false,
       message: "Error validating coupon",
@@ -208,8 +173,26 @@ export const validateCoupon = async ({ code, eventId }: ValidateCouponParams) =>
 // Calculate final price after applying coupon
 // Calculate final price after applying coupon
 export const applyCoupon = async ({ code, eventId, price, quantity }: ApplyCouponParams) => {
+  console.log('=== APPLY COUPON PARAMS ===', {
+    code,
+    eventId,
+    price,
+    quantity
+  });
+
   try {
     const { valid, message, coupon } = await validateCoupon({ code, eventId });
+    
+    console.log('=== VALIDATION RESULT ===', {
+      valid,
+      message,
+      coupon: coupon ? {
+        id: coupon.id,
+        code: coupon.code,
+        discount: coupon.discount,
+        isPercentage: coupon.isPercentage
+      } : null
+    });
 
     if (!valid || !coupon) {
       return {
