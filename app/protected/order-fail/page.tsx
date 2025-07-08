@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardDescription, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
-export default function PaymentFailPage() {
+function PaymentFailContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const sessionId = searchParams.get('session_id');
@@ -19,7 +20,6 @@ export default function PaymentFailPage() {
     verification: "We couldn't verify your payment details.",
   };
 
-  // Determine the specific error message
   const getErrorMessage = () => {
     if (!error) return errorMessages.default;
     if (error.includes('coupon')) return errorMessages.coupon;
@@ -87,5 +87,13 @@ export default function PaymentFailPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function PaymentFailPage() {
+  return (
+    <Suspense fallback={<div className="max-w-2xl mx-auto p-8">Loading payment status...</div>}>
+      <PaymentFailContent />
+    </Suspense>
   );
 }
