@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { Button } from "../ui/button";
+
 export const CalendarPreview = () => {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 max-w-4xl mx-auto">
