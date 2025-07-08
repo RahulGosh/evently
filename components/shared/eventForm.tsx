@@ -117,35 +117,47 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
     defaultValues: initialValues,
   });
 
-  const addCoupon = () => {
-    // Validate coupon inputs
-    if (!currentCoupon.code.trim()) {
-      alert("Coupon code is required");
-      return;
-    }
+ const addCoupon = () => {
+  // Validate coupon inputs
+  if (!currentCoupon.code.trim()) {
+    alert("Coupon code is required");
+    return;
+  }
 
-    // Check if the coupon code already exists
-    const isDuplicate = [...coupons, ...existingCoupons].some(
-      (coupon) => coupon.code.toLowerCase() === currentCoupon.code.toLowerCase()
-    );
+  // Ensure we have eventId for update mode
+  if (type === "Update" && !eventId) {
+    alert("Event ID is missing");
+    return;
+  }
 
-    if (isDuplicate) {
-      alert("Coupon code already exists");
-      return;
-    }
+  // Check if the coupon code already exists
+  const isDuplicate = [...coupons, ...existingCoupons].some(
+    (coupon) => coupon.code.toLowerCase() === currentCoupon.code.toLowerCase()
+  );
 
-    setCoupons([...coupons, currentCoupon]);
-    setCurrentCoupon({
-      code: "",
-      discount: 0,
-      isPercentage: true,
-      maxUses: null,
-      startDate: new Date(),
-      endDate: null,
-      eventId: eventId || "",
-    });
-    setShowCouponForm(false);
+  if (isDuplicate) {
+    alert("Coupon code already exists");
+    return;
+  }
+
+  // Create the coupon with the current eventId
+  const newCoupon = {
+    ...currentCoupon,
+    eventId: eventId || currentCoupon.eventId // Use the prop if available
   };
+
+  setCoupons([...coupons, newCoupon]);
+  setCurrentCoupon({
+    code: "",
+    discount: 0,
+    isPercentage: true,
+    maxUses: null,
+    startDate: new Date(),
+    endDate: null,
+    eventId: eventId || "" // Reset with current eventId
+  });
+  setShowCouponForm(false);
+};
 
   const handleDeleteCoupon = async () => {
     if (!couponToDelete) return;
@@ -201,26 +213,26 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
     return uploadedUrls;
   };
 
-  async function onSubmit(values: z.infer<typeof eventFormSchema>) {
-    try {
-      setIsSubmitting(true);
-  
-      let imageUrl = event?.imageUrl || "";
-  
-      if (files.length > 0) {
-        const uploadedUrls = await uploadImagesToCloudinary(files);
-        imageUrl = uploadedUrls[0];
-      } else if (!event?.imageUrl) {
-        form.setError("imageUrl", {
-          type: "manual",
-          message: "At least one image is required",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-  
-      if (type === "Create") {
-        const eventParams: CreateEventParams = {
+ async function onSubmit(values: z.infer<typeof eventFormSchema>) {
+  try {
+    setIsSubmitting(true);
+    
+    let imageUrl = event?.imageUrl || "";
+    
+    if (files.length > 0) {
+      const uploadedUrls = await uploadImagesToCloudinary(files);
+      imageUrl = uploadedUrls[0];
+    } else if (!event?.imageUrl) {
+      form.setError("imageUrl", {
+        type: "manual",
+        message: "At least one image is required",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (type === "Create") {
+      const eventParams: CreateEventParams = {
           userId: userId,
           event: {
             title: values.title,
@@ -237,30 +249,42 @@ const EventForm = ({ type, userId, event, eventId }: EventFormProps) => {
           },
           path: "/",
         };
-  
-        const newEvent = await createEvent(
-          eventParams,
-          userId,
-          imageUrl,
-          coupons.length > 0 ? coupons : undefined
-        );
-  
-        router.push("/");
-      } else {
-        const updatedEvent = await updateEvent(
-          eventId,
-          { ...values, imageUrl },
-          userId
-        );
-  
-        router.push("/protected/profile");
+      
+      const newEvent = await createEvent(
+        eventParams,
+        userId,
+        imageUrl,
+        coupons.length > 0 ? coupons : undefined
+      );
+      
+      router.push("/");
+    } else {
+      if (!eventId) {
+        console.error("Event ID is required for update");
+        return;
       }
-    } catch (error) {
-      console.error(`Failed to ${type.toLowerCase()} event:`, error);
-    } finally {
-      setIsSubmitting(false);
+      
+      // For update, first update the event
+      const updatedEvent = await updateEvent(
+        eventId,
+        { ...values, imageUrl },
+        userId
+      );
+      
+      // Then handle coupons if any were added
+      // if (coupons.length > 0) {
+      //   // You'll need to implement this function
+      //   await addCouponsToEvent(eventId, coupons);
+      // }
+      
+      router.push("/protected/profile");
     }
+  } catch (error) {
+    console.error(`Failed to ${type.toLowerCase()} event:`, error);
+  } finally {
+    setIsSubmitting(false);
   }
+}
 
   const handleFiles = (newFiles: File[]) => {
     setFiles(newFiles);
