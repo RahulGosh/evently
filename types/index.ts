@@ -160,7 +160,7 @@ export type ScannedTicketWithRelations = TicketScan & {
   };
 };
 
-import { TicketScan } from "@prisma/client";
+import { Order, TicketScan, User } from "@prisma/client";
 import * as z from "zod";
 
 export const LoginSchema = z.object({
@@ -278,4 +278,68 @@ export type OrderWithCoupon = {
   createdAt: Date;
   couponId?: string;
   coupon?: Coupon;
+};
+
+
+export type OrderWithEvent = {
+  id: string;
+  createdAt: Date;
+  stripeId: string;
+  totalAmount: string;
+  eventId: string;
+  buyerId: string;
+  quantity: number;
+  barcodeId?: string | null;
+  couponId?: string | null;
+  discountAmount?: string | null;
+  event: {
+    id: string;
+    title: string;
+    description?: string | null;
+    location?: string | null;
+    imageUrl: string;
+    startDateTime: Date;
+    endDateTime: Date;
+    price: string;
+    isFree: boolean;
+    url?: string | null;
+    ticketsLeft: number;
+    category?: {
+      id: string;
+      name: string;
+    } | null;
+    organizer: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+    };
+  };
+  buyer: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
+  coupon?: {
+    id: string;
+    code: string;
+    discount: number;
+    isPercentage: boolean;
+    maxUses?: number | null;
+    currentUses: number;
+    startDate: Date;
+    endDate?: Date | null;
+    isActive: boolean;
+    eventId: string;
+  } | null;
+};
+
+export type VerifyOrderResponse = {
+  success: boolean;
+  message?: string;
+  error?: string;
+  errorType?: "payment_failed" | "metadata_missing" | "verification_error";
+  sessionId?: string;
+  amount?: number;
+  order?: OrderWithEvent;
+  session?: any;
 };

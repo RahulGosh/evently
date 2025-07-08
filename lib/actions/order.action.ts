@@ -6,9 +6,10 @@ import {
   CreateOrderParams,
   GetOrdersByEventParams,
   GetOrdersByUserParams,
+  VerifyOrderResponse,
 } from "@/types";
 import { db } from "@/lib/db";
-import { incrementCouponUsage, validateCoupon } from "./coupon.action";
+import { validateCoupon } from "./coupon.action";
 
 export type CheckoutOrderWithCouponParams = CheckoutOrderParams & {
   code?: string;
@@ -295,9 +296,13 @@ export async function getOrdersByEvent({ searchString, eventId, sort = "desc" }:
   }
 }
 
-export async function verifyOrder(session_id: string) {
+export async function verifyOrder(session_id: string): Promise<VerifyOrderResponse> {
   if (!session_id) {
-    return { success: false, message: "Session ID is required" };
+    return { 
+      success: false, 
+      message: "Session ID is required",
+      errorType: "metadata_missing"
+    };
   }
 
   try {
@@ -313,12 +318,38 @@ export async function verifyOrder(session_id: string) {
       return { 
         success: false,
         message: "Payment was not successful",
+        errorType: "payment_failed",
         sessionId: session.id,
         amount: session.amount_total ? session.amount_total / 100 : 0
       };
     }
 
-    // Get the amount from line items if available
+    // Safely access metadata with type guards
+    if (!session.metadata) {
+      return {
+        success: false,
+        message: "Missing required metadata in session",
+        errorType: "metadata_missing"
+      };
+    }
+
+    const { 
+      eventId, 
+      buyerId, 
+      quantity, 
+      couponId, 
+      discountAmount,
+    } = session.metadata;
+
+    if (!eventId || !buyerId) {
+      return {
+        success: false,
+        message: "Missing required event or buyer information",
+        errorType: "metadata_missing"
+      };
+    }
+
+    // Calculate amount with proper type safety
     const amount = session.amount_total 
       ? session.amount_total / 100 
       : session.line_items?.data[0]?.amount_total 
@@ -326,50 +357,55 @@ export async function verifyOrder(session_id: string) {
         : 0;
 
     // Try to find existing order
-    const order = await db.order.findFirst({
+    const existingOrder = await db.order.findFirst({
       where: { stripeId: session.id },
       include: {
         event: {
           include: {
-            organizer: { select: { name: true, id: true } },
+            organizer: true,
+            category: true,
           },
         },
-        coupon: { select: { code: true, discount: true, isPercentage: true } },
+        buyer: true,
+        coupon: true,
       },
     });
 
-    if (order) {
+    if (existingOrder) {
       return { 
         success: true,
-        order,
+        order: existingOrder,
         sessionId: session.id,
         amount
       };
     }
 
-    // If no order exists but payment is successful, create one
-    if (session.payment_status === "paid") {
-      const newOrder = await createOrder({
+    // Create new order if doesn't exist
+    const newOrder = await db.order.create({
+      data: {
         stripeId: session.id,
-        eventId: session?.metadata.eventId,
-        buyerId: session?.metadata.buyerId,
+        eventId,
+        buyerId,
         totalAmount: amount.toString(),
-        quantity: parseInt(session?.metadata.quantity),
-        couponId: session?.metadata.couponId || undefined,
-        discountAmount: session?.metadata.discountAmount || "0",
-      });
+        quantity: parseInt(quantity) || 1,
+        couponId: couponId || undefined,
+        discountAmount: discountAmount || undefined,
+      },
+      include: {
+        event: {
+          include: {
+            organizer: true,
+            category: true,
+          },
+        },
+        buyer: true,
+        coupon: true,
+      },
+    });
 
-      return {
-        success: true,
-        order: newOrder,
-        sessionId: session.id,
-        amount
-      };
-    }
-
-    return { 
+    return {
       success: true,
-      session,
+      order: newOrder,
       sessionId: session.id,
       amount
     };
@@ -379,7 +415,8 @@ export async function verifyOrder(session_id: string) {
     return { 
       success: false,
       message: "Failed to verify order", 
-      error: error.message 
+      error: error.message,
+      errorType: "verification_error"
     };
   }
 }
