@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -15,7 +15,6 @@ import { TwitterShareButton } from "react-share";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VerifyOrderResponse } from "@/types";
 
-// Define the type for the order and event data
 type OrderWithEvent = {
   id: string;
   createdAt: Date;
@@ -46,7 +45,7 @@ type OrderWithEvent = {
   };
 };
 
-export default function OrderSuccessPage() {
+function OrderSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session_id = searchParams.get('session_id');
@@ -68,16 +67,12 @@ export default function OrderSuccessPage() {
           text: `Check out this event: ${order?.event.title}`,
           url: eventUrl,
         });
-        // If navigator.share succeeds, we assume the share sheet was handled,
-        // so no need to open the popover.
         setIsShareOpen(false);
       } else {
-        // If navigator.share is not available, open the popover
         setIsShareOpen((prev) => !prev);
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      // Even if there's an error with navigator.share, try to open the popover
       setIsShareOpen((prev) => !prev);
     }
   };
@@ -453,7 +448,7 @@ export default function OrderSuccessPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="p-6 space-y-6">
+        <CardContent className="p-6 space-y-6">
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -520,4 +515,19 @@ export default function OrderSuccessPage() {
   }
 
   return null;
+}
+
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-2xl mx-auto p-4 md:p-8 flex justify-center items-center min-h-[70vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading payment status...</p>
+        </div>
+      </div>
+    }>
+      <OrderSuccessContent />
+    </Suspense>
+  );
 }
