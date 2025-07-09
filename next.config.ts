@@ -6,6 +6,11 @@ const nextConfig = {
   images: {
     domains: ["res.cloudinary.com", "res.cloudinary.com", "lh3.googleusercontent.com", "avatars.githubusercontent.com", "w7.pngwing.com"],
   },
+  env: {
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    // other env vars needed at build time
+  }
 };
 
 // module.exports = nextConfig;
