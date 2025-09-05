@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(uuid())
+  clerkId        String          @unique
+  email          String?         @unique
+  emailVerified  DateTime?       @map("email_verified")
+  fullName       String?
+  image          String?
+  role           UserRole        @default(USER)
+  isAdmin        Boolean         @default(false)
+  events         Event[]
+  orders         Order[]
+  scannedTickets TicketScan[]
+  employerEvents EmployerEvent[]
+
+  @@map("users")
+}
+
+model Category {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  events Event[]
+
+  @@map("categories")
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  location      String?
+  createdAt     DateTime @default(now())
+  imageUrl      String
+  startDateTime DateTime
+  endDateTime   DateTime
+  price         String
+  isFree        Boolean  @default(false)
+  url           String?
+  ticketsLeft   Int      @default(10)
+
+  categoryId     String
+  organizerId    String
+  category       Category        @relation(fields: [categoryId], references: [id])
+  organizer      User            @relation(fields: [organizerId], references: [id])
+  orders         Order[]
+  ticketScans    TicketScan[]
+  employerEvents EmployerEvent[]
+  coupons        Coupon[] // Relation to coupons
+
+  @@map("events")
+}
+
+model Order {
+  id          String       @id @default(uuid())
+  createdAt   DateTime     @default(now())
+  stripeId    String       @unique
+  totalAmount String
+  eventId     String
+  buyerId     String
+  quantity    Int
+  buyer       User         @relation(fields: [buyerId], references: [id])
+  event       Event        @relation(fields: [eventId], references: [id])
+  barcodeId   String?      @unique
+  ticketScans TicketScan[]
+  couponId    String? // Optional coupon ID
+  coupon      Coupon?      @relation(fields: [couponId], references: [id])
+
+  discountAmount String? // Store the discount amount
+
+  @@map("orders")
+}
+
+model Coupon {
+  id           String    @id @default(uuid())
+  code         String
+  discount     Float
+  isPercentage Boolean   @default(true)
+  maxUses      Int?
+  currentUses  Int       @default(0)
+  startDate    DateTime  @default(now())
+  endDate      DateTime?
+  isActive     Boolean   @default(true)
+  eventId      String
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  createdAt    DateTime  @default(now())
+
+  @@unique([code, eventId])
+  @@map("coupons")
+}
+
+model TicketScan {
+  id         String     @id @default(uuid())
+  scannedAt  DateTime   @default(now())
+  orderId    String
+  eventId    String
+  scannerId  String
+  isValid    Boolean    @default(true)
+  scanResult ScanResult @default(VALID)
+  notes      String?
+
+  order   Order @relation(fields: [orderId], references: [id])
+  event   Event @relation(fields: [eventId], references: [id])
+  scanner User  @relation(fields: [scannerId], references: [id])
+
+  @@map("ticket_scans")
+}
+
+model EmployerEvent {
+  id         String   @id @default(uuid())
+  eventId    String
+  employerId String
+  assignedAt DateTime @default(now())
+
+  event    Event @relation(fields: [eventId], references: [id])
+  employer User  @relation(fields: [employerId], references: [id])
+
+  @@unique([eventId, employerId])
+  @@map("employer_events")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  EMPLOYER
+}
+
+enum ScanResult {
+  VALID
+  INVALID
+  ALREADY_SCANNED
+  WRONG_EVENT
+  EXPIRED
+}
