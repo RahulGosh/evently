@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getEventsByUser } from "@/lib/actions/event.action";
@@ -10,7 +11,8 @@ import Collection from "@/components/shared/collection";
 import LoadingLogoForProfile from "@/components/shared/loadingLogoForProfile";
 import { useAuth } from "@clerk/nextjs";
 
-const ProfileContent = () => {
+// Create a separate component that uses useSearchParams
+const ProfileContentInner = () => {
   const { userId: clerkId, isSignedIn } = useAuth();
   const searchParams = useSearchParams();
 
@@ -163,6 +165,15 @@ const ProfileContent = () => {
         </>
       )}
     </>
+  );
+};
+
+// Main component that wraps the inner component with Suspense
+const ProfileContent = () => {
+  return (
+    <Suspense fallback={<LoadingLogoForProfile />}>
+      <ProfileContentInner />
+    </Suspense>
   );
 };
 
