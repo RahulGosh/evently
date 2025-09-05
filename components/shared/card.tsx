@@ -131,7 +131,7 @@ const handleSendTicket = async (orderId: string) => {
           {formatDateTime(event.startDateTime).dateTime}
         </p>
 
-        <Link href={`/admin/events/${event.id}`}>
+        <Link href={`/events/${event.id}`}>
           <p className="p-medium-16 md:p-medium-20 line-clamp-2 flex-1 text-black">
             {event.title}
           </p>

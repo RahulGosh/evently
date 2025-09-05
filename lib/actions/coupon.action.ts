@@ -331,7 +331,7 @@ export const addCouponsToEvent = async (eventId: string, coupons: CreateCouponPa
       )
     );
 
-    revalidatePath(`/admin/events/${eventId}`);
+    revalidatePath(`/events/${eventId}`);
     return createdCoupons;
   } catch (error: any) {
     console.error("Error adding coupons to event:", error);

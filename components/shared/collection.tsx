@@ -29,7 +29,7 @@ const Collection = ({
   totalPages = 0,
   collectionType,
   urlParamName,
-  linkPrefix = "/admin/events/",
+  linkPrefix = "/events/",
   onDeleteSuccess, // ✅ Accept refetch function
 }: CollectionProps) => {
   return (

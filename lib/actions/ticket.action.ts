@@ -137,7 +137,7 @@ export async function scanTicket(
       },
     });
 
-    revalidatePath(`/admin/events/${eventId}`);
+    revalidatePath(`/events/${eventId}`);
     return scanRecord;
   } catch (error) {
     console.error("Error scanning ticket:", error);
